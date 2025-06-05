@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from backend.data.locations import LOCATION_ADDRESSES
 from backend.utils.geocode import geocode_address
 from backend.models.place import Place
+from backend.data.cache import SCRAPED_PLACE_CACHE
 
 def mock_scrape_nearby(lat: float, lon: float) -> List[Place]:
     # Return mock data — this simulates real scraping output
@@ -48,9 +49,10 @@ def main(location_name: str):
     print(f"🧭 Coordinates: {coords['lat']}, {coords['lon']}\n")
 
     places = mock_scrape_nearby(coords["lat"], coords["lon"])
+    SCRAPED_PLACE_CACHE[location_name] = places  # Store temporarily in memory
 
-    # Pydantic v2 compatible: model_dump()
     print(json.dumps([p.model_dump(mode="json") for p in places], indent=2))
+
 
 
 if __name__ == "__main__":
