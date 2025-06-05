@@ -1,18 +1,17 @@
 import sys
 import os
 import json
-from typing import List
+from typing import List, Dict
 
-# Add project root to sys.path for absolute imports
+# Fix for CLI execution (keep this for running manually)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from backend.data.locations import LOCATION_ADDRESSES
-from backend.utils.geocode import geocode_address
-from backend.models.place import Place
-from backend.data.cache import SCRAPED_PLACE_CACHE
+from data.locations import LOCATION_ADDRESSES
+from utils.geocode import geocode_address
+from models.place import Place
+from data.cache import SCRAPED_PLACE_CACHE
 
 def mock_scrape_nearby(lat: float, lon: float) -> List[Place]:
-    # Return mock data — this simulates real scraping output
     mock_results = [
         {
             "name": "Camp Sunshine Summer Program",
@@ -36,8 +35,21 @@ def mock_scrape_nearby(lat: float, lon: float) -> List[Place]:
             "contact_email": "camp@creativemindsart.com"
         }
     ]
-    # Validate and return Pydantic models
     return [Place(**entry) for entry in mock_results]
+
+def format_events_for_output(location_name: str, places: List[Place]) -> List[Dict]:
+    return [
+        {
+            "location_name": location_name,
+            "stevi_b_address": LOCATION_ADDRESSES[location_name],
+            "event_name": place.name,
+            "description": place.description,
+            "event_address": place.address,
+            "website": str(place.website) if place.website else None,
+            "contact_email": place.contact_email
+        }
+        for place in places
+    ]
 
 def main(location_name: str):
     address = LOCATION_ADDRESSES.get(location_name)
@@ -49,11 +61,9 @@ def main(location_name: str):
     print(f"🧭 Coordinates: {coords['lat']}, {coords['lon']}\n")
 
     places = mock_scrape_nearby(coords["lat"], coords["lon"])
-    SCRAPED_PLACE_CACHE[location_name] = places  # Store temporarily in memory
-
-    print(json.dumps([p.model_dump(mode="json") for p in places], indent=2))
-
-
+    SCRAPED_PLACE_CACHE[location_name] = places
+    formatted = format_events_for_output(location_name, places)
+    print(json.dumps(formatted, indent=2))
 
 if __name__ == "__main__":
     location = sys.argv[1] if len(sys.argv) > 1 else "Snellville"

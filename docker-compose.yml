@@ -22,7 +22,9 @@ services:
     volumes:
       - ./backend:/app
     working_dir: /app
-    command: tail -f /dev/null
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8001:8000"
     depends_on:
       - ollama
 
