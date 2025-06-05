@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from models.place import Place
 from typing import List, Dict
+import re
 
 # Fix for CLI execution (keep this for running manually)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -40,33 +41,72 @@ def mock_scrape_nearby(lat: float, lon: float) -> List[Place]:
     ]
     return [Place(**entry) for entry in mock_results]
 
-def scrape_real_events(lat: float, lon: float) -> List[Place]:
+def scrape_real_events(lat: float, lon: float, query: str = "Summer Camp") -> List[Place]:
     import os
 
     api_key = os.getenv("GOOGLE_PLACES_API_KEY")
     radius = 5000  # meters
-    query = "summer camp"
 
-    url = (
-        "https://maps.googleapis.com/maps/api/place/textsearch/json?"
-        f"query={requests.utils.quote(query)}"
-        f"&location={lat},{lon}&radius={radius}&key={api_key}"
+    search_url = (
+        "https://maps.googleapis.com/maps/api/place/textsearch/json"
+    )
+    details_url = (
+        "https://maps.googleapis.com/maps/api/place/details/json"
     )
 
-    res = requests.get(url)
+    search_params = {
+        "query": query,
+        "location": f"{lat},{lon}",
+        "radius": radius,
+        "key": api_key
+    }
+
+    res = requests.get(search_url, params=search_params)
     data = res.json()
 
     results = []
+
+    def extract_email_from_website(url):
+        try:
+            response = requests.get(url, timeout=5)
+            soup = BeautifulSoup(response.text, "html.parser")
+            emails = re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", soup.text)
+            return emails[0] if emails else None
+        except:
+            return None
+        
+    
+
     for result in data.get("results", [])[:5]:
+        place_id = result.get("place_id")
+        details_params = {
+            "place_id": place_id,
+            "fields": "name,website,formatted_address,types,editorial_summary,formatted_phone_number",
+            "key": api_key
+        }
+        details_res = requests.get(details_url, params=details_params)
+        details = details_res.json().get("result", {})
+
+        website = details.get("website")
+        email = extract_email_from_website(website) if website else None
+        phone_number = details.get("formatted_phone_number")
+        editorial = details.get("editorial_summary", {})
+        overview = editorial.get("overview")
+        description = overview or details.get("types", ["No description"])[0].replace("_", " ").title()
+
+
         results.append(Place(
-            name=result.get("name", "Unnamed Event"),
-            description=result.get("types", ["No description"])[0],
-            address=result.get("formatted_address", "Unknown address"),
-            website=None,  # You'd need a Place Details call for website
-            contact_email=None  # Not provided in Places API
+            name=details.get("name", "Unnamed Event"),
+            description=description,
+            address=details.get("formatted_address", "Unknown address"),
+            website=website,
+            contact_email=email,
+            phone_number=phone_number
         ))
 
+
     return results
+
 
 
 def format_events_for_output(location_name: str, places: List[Place]) -> List[Dict]:
@@ -78,7 +118,8 @@ def format_events_for_output(location_name: str, places: List[Place]) -> List[Di
             "description": place.description,
             "event_address": place.address,
             "website": str(place.website) if place.website else None,
-            "contact_email": place.contact_email
+            "contact_email": place.contact_email,
+            "phone_number": place.phone_number
         }
         for place in places
     ]

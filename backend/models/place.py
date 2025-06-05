@@ -7,3 +7,4 @@ class Place(BaseModel):
     address: str
     website: Optional[HttpUrl]
     contact_email: Optional[EmailStr]
+    phone_number: Optional[str]
