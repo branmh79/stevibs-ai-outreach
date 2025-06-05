@@ -1,6 +1,9 @@
 import sys
 import os
 import json
+import requests
+from bs4 import BeautifulSoup
+from models.place import Place
 from typing import List, Dict
 
 # Fix for CLI execution (keep this for running manually)
@@ -36,6 +39,35 @@ def mock_scrape_nearby(lat: float, lon: float) -> List[Place]:
         }
     ]
     return [Place(**entry) for entry in mock_results]
+
+def scrape_real_events(lat: float, lon: float) -> List[Place]:
+    import os
+
+    api_key = os.getenv("GOOGLE_PLACES_API_KEY")
+    radius = 5000  # meters
+    query = "summer camp"
+
+    url = (
+        "https://maps.googleapis.com/maps/api/place/textsearch/json?"
+        f"query={requests.utils.quote(query)}"
+        f"&location={lat},{lon}&radius={radius}&key={api_key}"
+    )
+
+    res = requests.get(url)
+    data = res.json()
+
+    results = []
+    for result in data.get("results", [])[:5]:
+        results.append(Place(
+            name=result.get("name", "Unnamed Event"),
+            description=result.get("types", ["No description"])[0],
+            address=result.get("formatted_address", "Unknown address"),
+            website=None,  # You'd need a Place Details call for website
+            contact_email=None  # Not provided in Places API
+        ))
+
+    return results
+
 
 def format_events_for_output(location_name: str, places: List[Place]) -> List[Dict]:
     return [
