@@ -7,3 +7,4 @@ streamlit
 pydantic[email]
 google-api-python-client
 openai
+python-dateutil
