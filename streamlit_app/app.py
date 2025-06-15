@@ -14,7 +14,7 @@ LOCATION_OPTIONS = list(LOCATION_ADDRESSES.keys())
 
 # Select location and event type
 location = st.selectbox("Choose a location to scout for events:", LOCATION_OPTIONS)
-COMMON_EVENT_TYPES = ["Karaoke", "Food Festivals", "Craft Fairs", "Live Music Events", "Cultural Festivals", "Summer Camp", "Water Park", "Recreation Center", "Art Class", "Sports Game"]
+COMMON_EVENT_TYPES = ["Karaoke", "Carnival", "Craft Fairs", "Live Music Events", "Festivals", "Summer Camp", "Water Park", "Recreation Center", "Art Class", "Sports Game"]
 event_type = st.selectbox("Filter by event type:", COMMON_EVENT_TYPES)
 
 # Select date range
