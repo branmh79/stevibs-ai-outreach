@@ -63,11 +63,9 @@ if st.button("Find Family Events"):
                     if event.get("website"):
                         st.markdown(f"[Website]({event['website']})")
 
-                    if event.get("contact_email"):
-                        st.markdown(f"**Email:** {event['contact_email']}")
-
-                    if event.get("phone"):
-                        st.markdown(f"**Phone:** {event['phone']}")
+                    # Always show Email and Phone fields, display 'N/A' if missing
+                    st.markdown(f"**Email:** {event.get('contact_email') if event.get('contact_email') else 'N/A'}")
+                    st.markdown(f"**Phone:** {event.get('phone_number') if event.get('phone_number') else 'N/A'}")
 
                     if event.get("address"):
                         st.markdown(f"**Address:** {event['address']}")
