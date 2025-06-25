@@ -8,14 +8,12 @@ st.set_page_config(page_title="SteviB's AI Outreach", layout="centered")
 st.title("SteviB's AI Outreach")
 
 # Add backend to path
-sys.path.append("/backend")
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
 from data.locations import LOCATION_ADDRESSES
 LOCATION_OPTIONS = list(LOCATION_ADDRESSES.keys())
 
-# Select location and event type
-location = st.selectbox("Choose a location to scout for events:", LOCATION_OPTIONS)
-COMMON_EVENT_TYPES = ["Karaoke", "Carnival", "Craft Fairs", "Live Music Events", "Festivals", "Summer Camp", "Water Park", "Recreation Center", "Art Class", "Sports Game"]
-event_type = st.selectbox("Filter by event type:", COMMON_EVENT_TYPES)
+# Select location only
+location = st.selectbox("Choose a location to scout for family events:", LOCATION_OPTIONS)
 
 # Select date range
 col1, col2 = st.columns(2)
@@ -28,26 +26,32 @@ with col2:
 start_str = start_date.isoformat() if start_date else None
 end_str = end_date.isoformat() if end_date else None
 
-if st.button("Scrape Events"):
-    with st.spinner("Searching for real events..."):
+if st.button("Find Family Events"):
+    with st.spinner("Searching for family-focused events..."):
         try:
             params = {
-                "location": location,
-                "event_type": event_type
+                "location": location
             }
             if start_str:
                 params["start_date"] = start_str
             if end_str:
                 params["end_date"] = end_str
 
-            res = requests.get("http://backend:8000/events", params=params)
+            # Use the unified endpoint
+            res = requests.get("http://backend:8000/events/family", params=params)
             data = res.json()
 
             if "error" in data:
                 st.error(data["error"])
-            elif isinstance(data, list) and data:
-                st.success(f"Found {len(data)} events near {location}")
-                for event in data:
+            elif data.get("success") and data.get("events"):
+                events = data["events"]
+                st.success(f"Found {len(events)} family events near {location}")
+                
+                # Show source breakdown
+                if "source_counts" in data:
+                    st.info(f"Sources: {', '.join([f'{k}: {v}' for k, v in data['source_counts'].items() if v > 0])}")
+                
+                for event in events:
                     st.subheader(event.get("title", "Untitled Event"))
 
                     if event.get("date"):
@@ -65,9 +69,15 @@ if st.button("Scrape Events"):
                     if event.get("phone"):
                         st.markdown(f"**Phone:** {event['phone']}")
 
+                    if event.get("address"):
+                        st.markdown(f"**Address:** {event['address']}")
+
+                    if event.get("source"):
+                        st.caption(f"Source: {event['source']}")
+
                     st.markdown("---")
             else:
-                st.warning("No events found.")
+                st.warning("No family events found.")
 
         except Exception as e:
             st.error(f"Failed to fetch events: {e}")
