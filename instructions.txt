@@ -1,6 +1,7 @@
 First, open a new terminal.
 
-Then, type this command: docker-compose up --build
+Then, type this command: 
+docker-compose up --build
 (docker compose up --build if on VM)
 
 Wait for it to build (roughly a minute), then go to this URL:
