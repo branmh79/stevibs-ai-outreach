@@ -71,6 +71,37 @@ class ContactScraperTool(BaseTool):
             })
         return results
 
+    async def scrape_contacts_from_urls_async(self, urls: List[str]) -> List[Dict]:
+        """Async wrapper to scrape a list of URLs concurrently using threads."""
+        import asyncio
+        from functools import partial
+        loop = asyncio.get_running_loop()
+        results: List[Dict] = []
+
+        # Helper that keeps signature compatible for run_in_executor
+        def _scrape(url: str):
+            title, description, email, phone = self._scrape_contact_info_from_url(url)
+            return {
+                "title": title or url,
+                "url": url,
+                "description": description,
+                "contact_email": email,
+                "phone_number": phone,
+            }
+
+        # Use a shared ThreadPool across all calls to limit concurrency
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            tasks = [loop.run_in_executor(executor, partial(_scrape, u)) for u in urls]
+            for coro in asyncio.as_completed(tasks):
+                try:
+                    res = await coro
+                    results.append(res)
+                except Exception:
+                    # Skip failed URLs silently (they're logged in _scrape_contact_info_from_url)
+                    pass
+        return results
+
     def _find_contact_page_url(self, soup, base_url):
         keywords = ['contact', 'about', 'support', 'help']
         for a in soup.find_all('a', href=True):

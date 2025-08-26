@@ -47,9 +47,7 @@ if st.button("Find Family Events"):
                 events = data["events"]
                 st.success(f"Found {len(events)} family events near {location}")
                 
-                # Show source breakdown
-                if "source_counts" in data:
-                    st.info(f"Sources: {', '.join([f'{k}: {v}' for k, v in data['source_counts'].items() if v > 0])}")
+                # Source breakdown no longer displayed
                 
                 for event in events:
                     st.subheader(event.get("title", "Untitled Event"))
@@ -69,9 +67,6 @@ if st.button("Find Family Events"):
 
                     if event.get("address"):
                         st.markdown(f"**Address:** {event['address']}")
-
-                    if event.get("source"):
-                        st.caption(f"Source: {event['source']}")
 
                     st.markdown("---")
             else:
