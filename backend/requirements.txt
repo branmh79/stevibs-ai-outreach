@@ -1,10 +1,20 @@
 beautifulsoup4
-fastapi
-uvicorn[standard]  # Enables nice features like auto-reload
-pydantic
+fastapi==0.103.2
+starlette==0.27.0
+uvicorn[standard]==0.23.2
+pydantic[email]==1.10.12
+email-validator==2.1.1
 requests
 streamlit
-pydantic[email]
 google-api-python-client==2.108.0
 openai
 python-dateutil
+
+# LangChain / LangGraph stack
+langchain==0.1.17
+langchain-core==0.1.51
+langchain-openai==0.0.8
+langgraph>=0.0.35
+
+networkx
+matplotlib
