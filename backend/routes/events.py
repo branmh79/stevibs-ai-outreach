@@ -24,11 +24,8 @@ async def get_family_events(
         "is_complete": False,
     }
 
-    import asyncio
-    from functools import partial
-
-    loop = asyncio.get_running_loop()
-    final_state = await loop.run_in_executor(None, partial(family_event_workflow.invoke, initial_state, {"recursion_limit": 100}))
+    # Invoke workflow directly (now async-native)
+    final_state = await family_event_workflow.ainvoke(initial_state, {"recursion_limit": 100})
 
     return {
         "success": True,

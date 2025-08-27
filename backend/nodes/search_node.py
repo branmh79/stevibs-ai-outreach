@@ -1,9 +1,11 @@
+import asyncio
+from functools import partial
 from models.workflow_state import WorkflowState
 from tools.google_search import GoogleSearchTool
 
 google_tool = GoogleSearchTool()
 
-def search_node(state: WorkflowState) -> dict:
+async def search_node(state: WorkflowState) -> dict:
     """LangGraph node that performs a Google search for the current category."""
 
     if state.current_category is None:
@@ -16,7 +18,10 @@ def search_node(state: WorkflowState) -> dict:
             "event_type": state.current_category,
             "num_results": 5,
         }
-        result = google_tool(input_payload)
+        
+        # Run Google search in thread pool since it's synchronous
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, partial(google_tool, input_payload))
         if result["success"]:
             state.search_results = result
         else:

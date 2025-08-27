@@ -2,24 +2,19 @@ from typing import List
 from models.workflow_state import WorkflowState
 
 FAMILY_CATEGORIES: List[str] = [
-    "summer camp",
-    "after school program",
-    "youth sports",
-    "school spirit day",
+    "indoor events",
+    "after school programs",
     "family recreation center",
-    "ymca",
-    "boys and girls club",
     "community center",
-    "parks and recreation",
     "youth activities",
     "teen programs",
     "family events",
     "school events",
-    "community sports",
-    "youth clubs",
+    "community events",
+    "youth sports clubs",
 ]
 
-def coordination_node(state: WorkflowState) -> dict:
+async def coordination_node(state: WorkflowState) -> dict:
     """Control node that iterates over family categories until complete."""
 
     # If we've already processed everything, just return

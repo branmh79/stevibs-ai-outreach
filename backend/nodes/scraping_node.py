@@ -4,7 +4,7 @@ from tools.contact_scraper import ContactScraperTool
 
 scraper_tool = ContactScraperTool()
 
-def scraping_node(state: WorkflowState) -> dict:
+async def scraping_node(state: WorkflowState) -> dict:
     """LangGraph node that scrapes contact info from URLs collected in search_results."""
 
     if not state.search_results or state.current_category is None:
@@ -16,7 +16,8 @@ def scraping_node(state: WorkflowState) -> dict:
         return {"source_counts": state.source_counts}
 
     try:
-        scrape_results: List[Dict] = scraper_tool.scrape_contacts_from_urls(urls)
+        # Use async method for parallel scraping
+        scrape_results: List[Dict] = await scraper_tool.scrape_contacts_from_urls_async(urls)
         state.scraped_data = scrape_results
         events: List[EventData] = []
         for item in scrape_results:
