@@ -12,14 +12,9 @@ services:
     env_file:
       - .env
 
-  streamlit:
-    image: python:3.11-slim
+  frontend:
+    build: ./frontend
     ports:
-      - "8501:8501"
-    volumes:
-      - ./streamlit_app:/app
-      - ./backend:/backend
-    working_dir: /app
-    command: bash -c "pip install streamlit && streamlit run app.py"
+      - "3000:80"
     depends_on:
       - backend
