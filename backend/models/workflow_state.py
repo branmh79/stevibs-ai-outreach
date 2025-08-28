@@ -7,7 +7,10 @@ class EventData(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     website: Optional[str] = None
-    contact_email: Optional[str] = None
+    when: Optional[str] = None  # e.g., day_time_sentence
+    interested_count: Optional[int] = None
+    attending_count: Optional[int] = None
+    contact_email: Optional[str] = None  # retained for other tools
     phone_number: Optional[str] = None
     source: str = "family_scraper"
     category: Optional[str] = None
@@ -28,6 +31,8 @@ class WorkflowState(BaseModel):
     events: List[EventData] = Field(default_factory=list)
     source_counts: Dict[str, int] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+    message: Optional[str] = None
 
     # intermediate scratch pads
     search_results: Optional[Dict[str, Any]] = None

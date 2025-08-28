@@ -29,7 +29,7 @@ async def get_family_events(
 
     return {
         "success": True,
-        "events": [e.dict() for e in final_state.get("events", [])],
+        "events": final_state.get("events", []),
         "total_count": len(final_state.get("events", [])),
         "source_counts": final_state.get("source_counts", {}),
         "errors": final_state.get("errors", []),

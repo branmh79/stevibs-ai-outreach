@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { format } from 'date-fns';
 
 // Location data (same as backend)
 const LOCATION_ADDRESSES = {
@@ -20,8 +19,6 @@ const LOCATION_OPTIONS = Object.keys(LOCATION_ADDRESSES);
 
 function App() {
   const [location, setLocation] = useState(LOCATION_OPTIONS[0]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,13 +35,6 @@ function App() {
         location: location
       };
       
-      if (startDate) {
-        params.start_date = startDate;
-      }
-      if (endDate) {
-        params.end_date = endDate;
-      }
-
       const response = await axios.get('/api/events/family', { params });
       const data = response.data;
 
@@ -60,15 +50,6 @@ function App() {
       setError(`Failed to fetch events: ${err.message}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch {
-      return dateString;
     }
   };
 
@@ -91,26 +72,6 @@ function App() {
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="startDate">Start Date (optional)</label>
-            <input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="endDate">End Date (optional)</label>
-            <input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
           </div>
 
           <button
@@ -138,8 +99,8 @@ function App() {
               <thead>
                 <tr>
                   <th>Event</th>
-                  <th>Description</th>
-                  <th>Contact</th>
+                  <th>When</th>
+                  <th>Interest</th>
                   <th>Website</th>
                 </tr>
               </thead>
@@ -149,13 +110,8 @@ function App() {
                     <td className="event-title">
                       {event.title || 'Untitled Event'}
                     </td>
-                    <td className="event-description" title={event.description}>
-                      {event.description || 'N/A'}
-                    </td>
-                    <td className="event-contact">
-                      <div>Email: {event.contact_email || 'N/A'}</div>
-                      <div>Phone: {event.phone_number || 'N/A'}</div>
-                    </td>
+                    <td className="event-meta">{event.when || 'N/A'}</td>
+                    <td className="event-meta">{`${event.interested_count || 0} interested / ${event.attending_count || 0} going`}</td>
                     <td>
                       {event.website ? (
                         <a

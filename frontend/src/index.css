@@ -199,6 +199,11 @@ tr:hover {
   font-size: 0.9rem;
 }
 
+.event-meta {
+  color: #a0aec0;
+  font-size: 0.8rem;
+}
+
 .event-description {
   max-width: 350px;
   overflow: hidden;

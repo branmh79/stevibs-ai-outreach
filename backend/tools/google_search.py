@@ -67,7 +67,7 @@ class GoogleSearchTool(BaseTool):
                 "date": None,  # Google search doesn't provide dates
                 "website": item.get("link"),
                 "contact_email": None,
-                "phone": None
+                "phone_number": None
             })
 
         return events

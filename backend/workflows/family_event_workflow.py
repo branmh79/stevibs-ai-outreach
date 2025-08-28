@@ -2,7 +2,7 @@ from langgraph.graph import StateGraph, END
 from models.workflow_state import WorkflowState
 from nodes.coordination_node import coordination_node
 from nodes.search_node import search_node
-from nodes.scraping_node import scraping_node
+from nodes.facebook_events_node import facebook_events_node
 
 
 def create_family_event_workflow():
@@ -11,22 +11,13 @@ def create_family_event_workflow():
     sg = StateGraph(WorkflowState)
 
     # register nodes
-    sg.add_node("coordinate", coordination_node)
-    sg.add_node("search", search_node)
-    sg.add_node("scrape", scraping_node)
+    sg.add_node("facebook_events", facebook_events_node)
 
-    # entry point
-    sg.set_entry_point("coordinate")
+    # entry point - go directly to Facebook events
+    sg.set_entry_point("facebook_events")
 
-    # Linear flow: coordinate -> search -> scrape -> coordinate (with conditional exit)
-    sg.add_edge("coordinate", "search")
-    sg.add_edge("search", "scrape")
-    
-    # Add conditional edge from scrape back to coordinate OR to END
-    sg.add_conditional_edges(
-        "scrape",
-        lambda state: END if state.is_complete else "coordinate",
-    )
+    # Simple flow: facebook_events -> END
+    sg.add_edge("facebook_events", END)
 
     return sg.compile()
 
