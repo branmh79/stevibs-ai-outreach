@@ -9,6 +9,7 @@ streamlit
 google-api-python-client==2.108.0
 openai
 python-dateutil
+playwright==1.40.0
 
 # LangChain / LangGraph stack
 langchain==0.1.17

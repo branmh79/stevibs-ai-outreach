@@ -1,0 +1,37 @@
+=== FB_DTSG TOKEN CONTEXTS ===
+
+=== LSD TOKEN CONTEXTS ===
+Context 1: :false,"APP_ID":"2220391788200892","IS_BUSINESS_DOMAIN":false},270],["DTSGInitialData",[],{},258],["LSD",[],{"token":"AVrcXoqNzZg"},323],["ServerNonce",[],{"ServerNonce":"nejfUVC4kZt-k0n_K0kFSa"},141],["
+
+Context 2: I6IntcIm5hbWVcIjpcImZpbHRlcl9ldmVudHNfZGF0ZVwiLFwiYXJnc1wiOlwiMjAyNS0wOC0yNX4yMDI1LTA4LTMxXCJ9IiwiZmlsdGVyX2V2ZW50c19kYXRlX3JhbmdlOjEiOiJ7XCJuYW1lXCI6XCJmaWx0ZXJfZXZlbnRzX2RhdGVcIixcImFyZ3NcIjpcIjIwMjUtM
+
+Context 3: DgtMzB\u00252BMjAyNS0wOC0zMVwifSIsImZpbHRlcl9ldmVudHNfZGF0ZV9yYW5nZToyIjoie1wibmFtZVwiOlwiZmlsdGVyX2V2ZW50c19kYXRlXCIsXCJhcmdzXCI6XCIyMDI1LTA5LTAxfjIwMjUtMDktMDdcIn0iLCJmaWx0ZXJfZXZlbnRzX2RhdGVfc
+
+Context 4: I6IntcIm5hbWVcIjpcImZpbHRlcl9ldmVudHNfZGF0ZVwiLFwiYXJnc1wiOlwiMjAyNS0wOC0yNX4yMDI1LTA4LTMxXCJ9IiwiZmlsdGVyX2V2ZW50c19kYXRlX3JhbmdlOjEiOiJ7XCJuYW1lXCI6XCJmaWx0ZXJfZXZlbnRzX2RhdGVcIixcImFyZ3NcIjpcIjIwMjUtM
+
+Context 5: DgtMzB+MjAyNS0wOC0zMVwifSIsImZpbHRlcl9ldmVudHNfZGF0ZV9yYW5nZToyIjoie1wibmFtZVwiOlwiZmlsdGVyX2V2ZW50c19kYXRlXCIsXCJhcmdzXCI6XCIyMDI1LTA5LTAxfjIwMjUtMDktMDdcIn0iLCJmaWx0ZXJfZXZlbnRzX2RhdGVfc
+
+Context 6: 774be8cdd48d268651","key_id":78,"prefill_source":null,"idd_user_crypted_uid":null,"locale":"en_US","lsd":{"name":"lsd","value":"AVrcXoqNWx8"},"jazoest":{"name":"jazoest","value":"21017"},"login_source":"
+
+Context 7: arTimeoutComet",null]},-1],["cr:807042",["setTimeoutComet"],{"__rc":["setTimeoutComet",null]},-1],["LSD",[],{"token":"AVrcXoqN6II"},323],["AnalyticsCoreData",[],{"device_id":"$^|AcY3ct92RGKDZBZRY0nF61TJq
+
+Context 8: reSheetSharingOptionsSection.react","FDSTooltipDeferredImpl.react","CometExceptionDialog.react","GetLsDatabase","SecuredActionTriggerWithAccountID.react","SecuredActionTriggerWithEncryptedContext.react",
+
+Context 9: aZam9F","BklK1iS","J0PYzPp","WdGz0s\/","q2\/XtGs"],"rdfds":{"m":["FDSTooltipDeferredImpl.react","GetLsDatabase","CometExceptionDialog.react","SecuredActionTriggerWithAccountID.react","SecuredActionTrigge
+
+Context 10: ce"],{"__rc":["MAWBundleResource",null]},-1],["cr:6985",[],{"__rc":[null,null]},-1],["cr:7235",["GetLsDatabaseDeferredForDisplay"],{"__rc":["GetLsDatabaseDeferredForDisplay",null]},-1],["cr:7605",["useLi
+
+
+=== TOKEN PATTERNS ===
+Pattern 1: se},270],["DTSGInitialData",[],{},258],["LSD",[],{"token":"AVrcXoqNzZg"},323],["ServerNonce",[],{"ServerNonce":"nejfUVC4kZt-k0n_K0kFSa"},141],["SiteData",[],
+
+Pattern 2: _message_channel":true},3419],["DTSGInitData",[],{"token":"","async_get_token":""},3515],["UriNeedRawQuerySVConfig",[],{"uris":["dms.netmng.com","doubleclick
+
+Pattern 3: ["DTSGInitialData",[],{},258],["DTSGInitData",[],{"token":"","async_get_token":""},3515],["cr:806696",["clearTimeoutComet"],{"__rc":["clearTimeoutComet",null
+
+Pattern 4: ,{"__rc":["setTimeoutComet",null]},-1],["LSD",[],{"token":"AVrcXoqN6II"},323],["AnalyticsCoreData",[],{"device_id":"$^|AcY3ct92RGKDZBZRY0nF61TJqmtUJu2c0l2m2q
+
+Pattern 5: "is_mobile_device":false},27],["DTSGInitData",[],{"token":"","async_get_token":""},3515],["FBDomainsSVConfig",[],{"domains":{"__map":[["www.facebook.com",1],
+
+Pattern 6: "I don\u2019t want to see this"}},551],["LSD",[],{"token":"AVrcXoqNyVY"},323],["MessengerWebInitData",[],{"accountKey":"","accountKeyV2":"","activeThreadKeys
+

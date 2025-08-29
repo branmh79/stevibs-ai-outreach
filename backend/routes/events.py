@@ -12,6 +12,9 @@ async def get_family_events(
     search_radius: int = Query(5000, description="Search radius in meters")
 ) -> Dict[str, Any]:
     """Family-focused endpoint powered by LangGraph workflow."""
+    
+    print(f"[API] Received family events request for location: {location}")
+    print(f"[API] Parameters - use_mock: {use_mock}, search_radius: {search_radius}")
 
     # Build initial state and run LangGraph workflow synchronously (can wrap in executor for async)
     initial_state = {
