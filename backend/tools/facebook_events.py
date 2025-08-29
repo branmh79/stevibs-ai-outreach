@@ -52,53 +52,15 @@ class FacebookEventsTool(BaseTool):
                 
                 if response.status_code == 200:
                     print(f"Success with URL: {search_url}")
-                    
-                    # Save HTML response for debugging
-                    try:
-                        import os
-                        from datetime import datetime
-                        debug_dir = "debug_html"
-                        if not os.path.exists(debug_dir):
-                            os.makedirs(debug_dir)
-                        
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        filename = f"{debug_dir}/facebook_response_{timestamp}.html"
-                        
-                        with open(filename, 'w', encoding='utf-8') as f:
-                            f.write(response.text)
-                        print(f"[DEBUG] Saved HTML response to: {filename}")
-                        
-                        # Also save a smaller snippet focusing on token-related content
-                        token_snippet_file = f"{debug_dir}/token_snippets_{timestamp}.txt"
-                        with open(token_snippet_file, 'w', encoding='utf-8') as f:
-                            f.write("=== FB_DTSG TOKEN CONTEXTS ===\n")
-                            fb_dtsg_contexts = re.findall(r'.{0,100}fb_dtsg.{0,100}', response.text, re.IGNORECASE)
-                            for i, context in enumerate(fb_dtsg_contexts[:10]):
-                                f.write(f"Context {i+1}: {context}\n\n")
-                            
-                            f.write("\n=== LSD TOKEN CONTEXTS ===\n")
-                            lsd_contexts = re.findall(r'.{0,100}lsd.{0,100}', response.text, re.IGNORECASE)
-                            for i, context in enumerate(lsd_contexts[:10]):
-                                f.write(f"Context {i+1}: {context}\n\n")
-                            
-                            f.write("\n=== TOKEN PATTERNS ===\n")
-                            token_patterns = re.findall(r'.{0,50}"token".{0,100}', response.text)
-                            for i, pattern in enumerate(token_patterns[:15]):
-                                f.write(f"Pattern {i+1}: {pattern}\n\n")
-                        
-                        print(f"[DEBUG] Saved token analysis to: {token_snippet_file}")
-                        
-                    except Exception as e:
-                        print(f"[DEBUG] Failed to save debug files: {e}")
-                    
+                                        
                     # Parse the HTML response
                     soup = BeautifulSoup(response.content, 'html.parser')
                     # HTML length can still be useful
                     print(f"HTML content length: {len(response.content)}")
                     
-                    # Extract event information from the page
-                    events = self._extract_events_from_page(soup, location)
-                    print(f"Extracted {len(events)} events from HTML")
+                    # Static HTML parsing no longer supported - use Playwright
+                    events = []
+                    print(f"[DEBUG] Static HTML parsing skipped - Playwright method will be used")
 
                     # Try to paginate using cursor to load more results (simulate scrolling)
                     all_events = events
@@ -210,21 +172,8 @@ class FacebookEventsTool(BaseTool):
                                                     else:
                                                         print("[DEBUG] Simplified query also failed, falling back to deep extraction")
                                                         # Run the same fallback extraction here when GraphQL fails
-                                                        print("[DEBUG] Running fallback extraction after GraphQL failure...")
-                                                        additional_events = self._extract_more_events_from_page(soup)
-                                                        text_events = self._extract_events_from_raw_text(response.text, location)
-                                                        
-                                                        fallback_events = additional_events + text_events
-                                                        if fallback_events:
-                                                            print(f"[DEBUG] Found {len(fallback_events)} events via fallback methods")
-                                                            all_events.extend(fallback_events)
-                                                            # Deduplicate
-                                                            unique = {}
-                                                            for ev in all_events:
-                                                                eid = ev.get('id') or ev.get('website') or ev.get('title')
-                                                                if eid and eid not in unique:
-                                                                    unique[eid] = ev
-                                                            all_events = list(unique.values())
+                                                        print("[DEBUG] GraphQL extraction failed - Playwright method will be used for comprehensive extraction")
+                                                        # Removed fallback extraction methods
                                                         break
                                                 except Exception as e:
                                                     print(f"[DEBUG] Simplified query response parsing failed: {e}")
@@ -288,15 +237,8 @@ class FacebookEventsTool(BaseTool):
                                     
                                     if node_json and isinstance(node_json, dict):
                                         print(f"[DEBUG] Node keys: {list(node_json.keys())}")
-                                        # reuse extractor to convert
-                                        ev = self._find_events_in_json(node_json)
-                                        if ev:
-                                            new_events.extend(ev)
-                                        else:
-                                            # Try direct extraction if _find_events_in_json fails
-                                            direct_event = self._extract_event_from_node(node_json)
-                                            if direct_event:
-                                                new_events.append(direct_event)
+                                        # Legacy extraction methods removed - Playwright handles this better
+                                        print("[DEBUG] Legacy GraphQL extraction skipped - using Playwright")
                                 print(f"[DEBUG] GraphQL extracted {len(new_events)} events")
                                 all_events.extend(new_events)
                                 
@@ -325,33 +267,18 @@ class FacebookEventsTool(BaseTool):
                         else:
                             print("[DEBUG] fb_dtsg or lsd token not found – cannot paginate via GraphQL")
                             print(f"[DEBUG] Will only return initial events from page: {len(all_events)}")
-                            # Try to extract more events from the initial page's JSON data
-                            print("[DEBUG] Attempting deeper extraction from initial page...")
-                            additional_events = self._extract_more_events_from_page(soup)
-                            if additional_events:
-                                print(f"[DEBUG] Found {len(additional_events)} additional events via deep extraction")
-                                all_events.extend(additional_events)
-                                # Deduplicate again
-                                unique = {}
-                                for ev in all_events:
-                                    eid = ev.get('id') or ev.get('website') or ev.get('title')
-                                    if eid and eid not in unique:
-                                        unique[eid] = ev
-                                all_events = list(unique.values())
+                            # Legacy deep extraction methods removed - Playwright handles this better
+                            print("[DEBUG] Legacy deep extraction skipped - using Playwright")
+                            # Deduplicate events
+                            unique = {}
+                            for ev in all_events:
+                                eid = ev.get('id') or ev.get('website') or ev.get('title')
+                                if eid and eid not in unique:
+                                    unique[eid] = ev
+                            all_events = list(unique.values())
                             
-                            # Try alternative approach: look for more events in the raw response text
-                            print("[DEBUG] Attempting event extraction from raw response text...")
-                            text_events = self._extract_events_from_raw_text(response.text, location)
-                            if text_events:
-                                print(f"[DEBUG] Found {len(text_events)} events from raw text extraction")
-                                all_events.extend(text_events)
-                                # Final deduplication
-                                unique = {}
-                                for ev in all_events:
-                                    eid = ev.get('id') or ev.get('website') or ev.get('title')
-                                    if eid and eid not in unique:
-                                        unique[eid] = ev
-                                all_events = list(unique.values())
+                            # Legacy text extraction methods removed - Playwright handles this better
+                            print("[DEBUG] Legacy text extraction skipped - using Playwright")
 
                     final_count = min(len(all_events), 100)
                     print(f"[INFO] Returning {final_count} events (loaded {len(all_events)} total)")
@@ -392,279 +319,17 @@ class FacebookEventsTool(BaseTool):
             print(f"Error searching Facebook events: {e}")
             return []
     
-    def _extract_events_from_page(self, soup: BeautifulSoup, location: str) -> List[Dict[str, Any]]:
-        """Extract event information from Facebook page HTML"""
-        events = []
-        
-        try:
-            # First, try to extract events from embedded JSON data (Facebook's preferred method)
-            json_events = self._extract_events_from_json(soup)
-            if json_events:
-                print(f"Extracted {len(json_events)} events from JSON data")
-                return json_events
-            
-            # Fallback to HTML parsing if JSON extraction fails
-            print("JSON extraction failed, falling back to HTML parsing")
-            
-            # Look for event containers in the HTML
-            event_selectors = [
-                '[data-testid="event-card"]',
-                '[data-testid="event-item"]', 
-                '.event-item',
-                '.event-card', 
-                '[role="article"]',
-                '[data-testid="event"]',
-                '.event',
-                '[data-testid="event-card-container"]',
-                '.event-card-container'
-            ]
-            
-            event_elements = []
-            for selector in event_selectors:
-                event_elements = soup.select(selector)
-                print(f"Selector '{selector}' found {len(event_elements)} elements")
-                if event_elements:
-                    break
-            
-            if not event_elements:
-                # Fallback: look for any divs that might contain event info
-                event_elements = soup.find_all('div', class_=re.compile(r'event|Event'))
-                print(f"Fallback regex found {len(event_elements)} elements")
-            
-            # Additional fallback: look for any elements containing "event" in text
-            if not event_elements:
-                event_elements = soup.find_all(text=re.compile(r'event', re.IGNORECASE))
-                event_elements = [elem.parent for elem in event_elements if elem.parent]
-                print(f"Text search found {len(event_elements)} elements")
-            
-            print(f"Total event elements found: {len(event_elements)}")
-            
-            for i, element in enumerate(event_elements[:10]):  # Limit to first 10 for debugging
-                print(f"Processing element {i+1}: {str(element)[:200]}...")
-                event_data = self._extract_single_event(element, location)
-                if event_data:
-                    events.append(event_data)
-                    print(f"Successfully extracted event: {event_data['title']}")
-                else:
-                    print(f"Failed to extract event from element {i+1}")
-            
-        except Exception as e:
-            print(f"Error extracting events: {e}")
-        
-        return events
+
     
-    def _extract_events_from_json(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
-        """Extract events from embedded JSON data in Facebook pages"""
-        events = []
-        
-        try:
-            # Look for script tags containing JSON data
-            script_tags = soup.find_all('script', type='application/json')
-            
-            for script in script_tags:
-                try:
-                    # Parse the JSON content
-                    json_data = json.loads(script.string)
-                    
-                    # Navigate through the JSON structure to find events
-                    events_found = self._find_events_in_json(json_data)
-                    if events_found:
-                        events.extend(events_found)
-                        print(f"Found {len(events_found)} events in JSON script")
-                        
-                except json.JSONDecodeError:
-                    continue
-                except Exception as e:
-                    print(f"Error parsing JSON script: {e}")
-                    continue
-            
-            # Also look for script tags with data-sjs attribute (Facebook's format)
-            sjs_scripts = soup.find_all('script', attrs={'data-sjs': True})
-            
-            for script in sjs_scripts:
-                try:
-                    # Parse the JSON content
-                    json_data = json.loads(script.string)
-                    
-                    # Navigate through the JSON structure to find events
-                    events_found = self._find_events_in_json(json_data)
-                    if events_found:
-                        events.extend(events_found)
-                        print(f"Found {len(events_found)} events in SJS script")
-                        
-                except json.JSONDecodeError:
-                    continue
-                except Exception as e:
-                    print(f"Error parsing SJS script: {e}")
-                    continue
-            
-            # Deduplicate events by their unique Facebook id
-            unique_events = {}
-            for ev in events:
-                ev_id = ev.get("id") or ev.get("url") or ev.get("website")
-                if ev_id and ev_id not in unique_events:
-                    unique_events[ev_id] = ev
-            return list(unique_events.values())
-            
-        except Exception as e:
-            print(f"Error extracting events from JSON: {e}")
-            return []
+
     
-    def _find_events_in_json(self, data: Any) -> List[Dict[str, Any]]:
-        """Recursively search through JSON data to find event objects"""
-        events = []
-        
-        if isinstance(data, dict):
-            # Check if this is an event object
-            if (data.get('__typename') == 'Event' and 
-                data.get('name') and 
-                data.get('id')):
-                
-                event = {
-                    "title": data.get('name', 'Untitled Event'),
-                    "description": data.get('description', 'No description available'),
-                    "when": data.get('day_time_sentence', 'Date not specified'),
-                    "address": data.get('event_place', {}).get('contextual_name', 'Location not specified'),
-                    "contact_email": "",  # Facebook doesn't typically provide this
-                    "phone_number": "",   # Facebook doesn't typically provide this
-                    "website": data.get('url') or data.get('eventUrl', ''),
-                    "source": "Facebook (JSON)",
-                    "start_timestamp": data.get('start_timestamp'),
-                    "attending_count": 0,
-                    "interested_count": 0
-                }
-                
-                # Extract social context if available
-                social_context = data.get('social_context', {})
-                if isinstance(social_context, dict) and social_context.get('text'):
-                    # Parse text like "639 interested · 1 going"
-                    text = social_context['text']
-                    interested_match = re.search(r'(\d+)\s+interested', text)
-                    if interested_match:
-                        event['interested_count'] = int(interested_match.group(1))
-                    
-                    going_match = re.search(r'(\d+)\s+going', text)
-                    if going_match:
-                        event['attending_count'] = int(going_match.group(1))
-                
-                events.append(event)
-                print(f"Found event: {event['title']}")
-            
-            # Recursively search through all values
-            for value in data.values():
-                events.extend(self._find_events_in_json(value))
-                
-        elif isinstance(data, list):
-            # Recursively search through all items
-            for item in data:
-                events.extend(self._find_events_in_json(item))
-        
-        return events
+
     
-    def _extract_single_event(self, element, location: str) -> Optional[Dict[str, Any]]:
-        """Extract information from a single event element"""
-        try:
-            # Try to extract event title
-            title = self._extract_text(element, [
-                '[data-testid="event-title"]',
-                '.event-title',
-                'h1', 'h2', 'h3',
-                '[role="heading"]'
-            ])
-            
-            if not title or len(title) < 3:
-                return None
-            
-            # Try to extract description
-            description = self._extract_text(element, [
-                '[data-testid="event-description"]',
-                '.event-description',
-                '.description',
-                'p'
-            ])
-            
-            # Try to extract date/time
-            date_info = self._extract_text(element, [
-                '[data-testid="event-time"]',
-                '.event-time',
-                '.time',
-                'time'
-            ])
-            
-            # Try to extract location
-            event_location = self._extract_text(element, [
-                '[data-testid="event-location"]',
-                '.event-location',
-                '.location'
-            ])
-            
-            # Try to extract contact info
-            contact_info = self._extract_text(element, [
-                '.contact',
-                '.contact-info',
-                '.details'
-            ])
-            
-            # Extract email and phone from contact info
-            contact_email = ""
-            phone_number = ""
-            if contact_info:
-                email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', contact_info)
-            if email_match:
-                contact_email = email_match.group()
-            
-                phone_match = re.search(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', contact_info)
-                if phone_match:
-                    phone_number = phone_match.group()
-            
-            # Try to find event link
-            event_link = self._extract_link(element)
-            
-            return {
-                "title": title[:100] if title else "Untitled Event",
-                "description": description[:300] + "..." if description and len(description) > 300 else (description or "No description available"),
-                "date": date_info or "Date not specified",
-                "address": event_location or location,
-                "contact_email": contact_email,
-                "phone_number": phone_number,
-                "website": event_link or f"https://www.facebook.com/search/events/?q=family%20events%20{location.replace(' ', '%20')}",
-                "source": "Facebook (Web)",
-                "attending_count": 0,
-                "interested_count": 0
-            }
-            
-        except Exception as e:
-            print(f"Error extracting single event: {e}")
-            return None
+
     
-    def _extract_text(self, element, selectors: List[str]) -> str:
-        """Extract text content using multiple selectors"""
-        for selector in selectors:
-            try:
-                found = element.select_one(selector)
-                if found:
-                    text = found.get_text(strip=True)
-                    if text:
-                        return text
-            except:
-                continue
-        
-        # Fallback: get all text from the element
-        return element.get_text(strip=True)
+
     
-    def _extract_link(self, element) -> str:
-        """Extract link from an element"""
-        try:
-            link = element.find('a')
-            if link and link.get('href'):
-                href = link.get('href')
-                if href.startswith('/'):
-                    return f"https://www.facebook.com{href}"
-                elif href.startswith('http'):
-                    return href
-        except:
-            pass
-        return ""
+
     
     def execute(self, location: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
         """Execute the Facebook events search using web scraping"""
@@ -891,250 +556,11 @@ class FacebookEventsTool(BaseTool):
         
         return fb_dtsg, lsd
 
-    def _extract_more_events_from_page(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
-        """Extract additional events using more aggressive parsing when GraphQL fails"""
-        additional_events = []
-        
-        try:
-            # Look for script tags with more JSON data
-            all_scripts = soup.find_all('script')
-            
-            for script in all_scripts:
-                if script.string:
-                    script_content = script.string
-                    
-                    # Look for event data patterns in any script tag
-                    if 'Event' in script_content and ('name' in script_content or 'title' in script_content):
-                        # Try to find event objects in the script
-                        event_matches = re.finditer(r'"Event"[^}]*}', script_content)
-                        for match in event_matches:
-                            try:
-                                # Extract JSON fragment and try to parse
-                                json_fragment = '{' + match.group(0)
-                                # Simple attempt to close the JSON object
-                                if json_fragment.count('{') > json_fragment.count('}'):
-                                    json_fragment += '}' * (json_fragment.count('{') - json_fragment.count('}'))
-                                
-                                event_data = json.loads(json_fragment)
-                                events_found = self._find_events_in_json(event_data)
-                                additional_events.extend(events_found)
-                            except:
-                                continue
-                    
-                    # Look for event URLs that might lead to more events
-                    event_url_matches = re.finditer(r'facebook\.com/events/(\d+)', script_content)
-                    for url_match in event_url_matches:
-                        event_id = url_match.group(1)
-                        # Create a basic event object from the URL
-                        event = {
-                            "title": f"Facebook Event {event_id}",
-                            "description": "Event found in page data",
-                            "when": "Date not specified",
-                            "address": "Location not specified",
-                            "contact_email": "",
-                            "phone_number": "",
-                            "website": f"https://www.facebook.com/events/{event_id}",
-                            "source": "Facebook (URL extraction)",
-                            "id": event_id,
-                            "attending_count": 0,
-                            "interested_count": 0
-                        }
-                        additional_events.append(event)
-            
-            print(f"[DEBUG] Deep extraction found {len(additional_events)} additional events")
-            
-        except Exception as e:
-            print(f"[DEBUG] Error in deep extraction: {e}")
-        
-        return additional_events
 
-    def _extract_events_from_raw_text(self, html_text: str, location: str) -> List[Dict[str, Any]]:
-        """Extract events directly from raw HTML text when other methods fail"""
-        events = []
-        
-        try:
-            # Look for Facebook event URLs in the raw text
-            event_url_pattern = r'facebook\.com/events/(\d+)'
-            event_urls = re.findall(event_url_pattern, html_text)
-            unique_event_ids = list(set(event_urls))  # Remove duplicates
-            
-            print(f"[DEBUG] Found {len(unique_event_ids)} unique event IDs in raw text")
-            
-            for event_id in unique_event_ids[:20]:  # Limit to 20 to avoid too many
-                # Look for event names/titles near the event ID
-                # Search in a window around each event ID occurrence
-                event_id_positions = [m.start() for m in re.finditer(rf'facebook\.com/events/{event_id}', html_text)]
-                
-                for pos in event_id_positions[:2]:  # Check first 2 occurrences of each ID
-                    # Extract text around the event URL (500 chars before and after)
-                    start = max(0, pos - 500)
-                    end = min(len(html_text), pos + 500)
-                    context = html_text[start:end]
-                    
-                    # Look for event title patterns in the context
-                    title_patterns = [
-                        r'"name"\s*:\s*"([^"]{10,100})"',  # JSON name field
-                        r'"title"\s*:\s*"([^"]{10,100})"',  # JSON title field
-                        r'<title[^>]*>([^<]{10,100})</title>',  # HTML title
-                        r'data-testid="event-title"[^>]*>([^<]{10,100})</',  # Event title element
-                        r'>([A-Z][^<]{10,100}event[^<]{0,50})</',  # Text containing "event"
-                        r'>([^<]{10,100}Festival[^<]{0,30})</',  # Text containing "Festival"
-                        r'>([^<]{10,100}Concert[^<]{0,30})</',  # Text containing "Concert"
-                    ]
-                    
-                    title = None
-                    for pattern in title_patterns:
-                        title_match = re.search(pattern, context, re.IGNORECASE)
-                        if title_match:
-                            potential_title = title_match.group(1).strip()
-                            # Basic validation for title
-                            if (len(potential_title) > 10 and 
-                                not potential_title.startswith(('http', 'www', 'facebook')) and
-                                not re.match(r'^[0-9\-:\/\s]+$', potential_title)):  # Not just dates/numbers
-                                title = potential_title
-                                break
-                    
-                    if not title:
-                        title = f"Facebook Event {event_id}"
-                    
-                    # Look for date information in the context
-                    date_patterns = [
-                        r'"start_time"\s*:\s*"([^"]+)"',
-                        r'"event_time"\s*:\s*"([^"]+)"',
-                        r'"date"\s*:\s*"([^"]+)"',
-                        r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}[^0-9]{0,20}202[4-9]',
-                        r'\d{1,2}\/\d{1,2}\/202[4-9]',
-                        r'202[4-9]-\d{2}-\d{2}',
-                    ]
-                    
-                    date_info = "Date not specified"
-                    for pattern in date_patterns:
-                        date_match = re.search(pattern, context, re.IGNORECASE)
-                        if date_match:
-                            date_info = date_match.group(0 if 'group' not in pattern else 1)
-                            break
-                    
-                    # Create event object
-                    event = {
-                        "title": title[:100],
-                        "description": f"Event found via text extraction from Facebook events page",
-                        "when": date_info,
-                        "address": location,
-                        "contact_email": "",
-                        "phone_number": "",
-                        "website": f"https://www.facebook.com/events/{event_id}",
-                        "source": "Facebook (Text extraction)",
-                        "id": event_id,
-                        "attending_count": 0,
-                        "interested_count": 0
-                    }
-                    
-                    events.append(event)
-                    print(f"[DEBUG] Extracted event from text: {title[:50]}...")
-                    break  # Only create one event per ID
-            
-        except Exception as e:
-            print(f"[DEBUG] Error in raw text extraction: {e}")
-        
-        return events
 
-    def _extract_event_from_node(self, node: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Extract event data directly from a GraphQL node"""
-        try:
-            # Try to extract basic event info from various possible node structures
-            event_data = {}
-            
-            # Try different name/title fields
-            title = (node.get('name') or 
-                    node.get('title') or 
-                    node.get('event_name') or
-                    node.get('text', {}).get('text') if isinstance(node.get('text'), dict) else node.get('text'))
-            
-            if not title or not isinstance(title, str) or len(title.strip()) < 3:
-                return None
-            
-            event_data['title'] = title.strip()
-            
-            # Extract description
-            description = (node.get('description') or 
-                          node.get('event_description') or
-                          node.get('body', {}).get('text') if isinstance(node.get('body'), dict) else node.get('body') or
-                          "No description available")
-            
-            event_data['description'] = description if isinstance(description, str) else "No description available"
-            
-            # Extract date/time info
-            date_info = (node.get('start_time') or 
-                        node.get('event_time') or
-                        node.get('when') or
-                        node.get('day_time_sentence') or
-                        "Date not specified")
-            
-            event_data['when'] = date_info if isinstance(date_info, str) else "Date not specified"
-            
-            # Extract location
-            location = "Location not specified"
-            if node.get('location'):
-                loc_data = node['location']
-                if isinstance(loc_data, dict):
-                    location = (loc_data.get('name') or 
-                               loc_data.get('address') or 
-                               loc_data.get('city') or
-                               str(loc_data))
-                elif isinstance(loc_data, str):
-                    location = loc_data
-            elif node.get('place'):
-                place_data = node['place']
-                if isinstance(place_data, dict):
-                    location = (place_data.get('name') or 
-                               place_data.get('contextual_name') or
-                               str(place_data))
-                elif isinstance(place_data, str):
-                    location = place_data
-            
-            event_data['address'] = location
-            
-            # Extract URL
-            url = (node.get('url') or 
-                  node.get('event_url') or
-                  node.get('link') or
-                  f"https://www.facebook.com/events/{node.get('id', 'unknown')}")
-            
-            event_data['website'] = url
-            
-            # Extract ID
-            event_id = node.get('id') or node.get('event_id')
-            if event_id:
-                event_data['id'] = str(event_id)
-            
-            # Set defaults for missing fields
-            event_data.update({
-                'contact_email': "",
-                'phone_number': "",
-                'source': "Facebook (GraphQL)",
-                'attending_count': 0,
-                'interested_count': 0
-            })
-            
-            # Try to extract social counts
-            if node.get('social_context'):
-                social = node['social_context']
-                if isinstance(social, dict) and social.get('text'):
-                    text = social['text']
-                    interested_match = re.search(r'(\d+)\s+interested', text)
-                    if interested_match:
-                        event_data['interested_count'] = int(interested_match.group(1))
-                    
-                    going_match = re.search(r'(\d+)\s+going', text)
-                    if going_match:
-                        event_data['attending_count'] = int(going_match.group(1))
-            
-            print(f"[DEBUG] Extracted event via direct method: {event_data['title']}")
-            return event_data
-            
-        except Exception as e:
-            print(f"[DEBUG] Error in direct node extraction: {e}")
-            return None
+
+
+
 
     def _filter_events_by_location(self, events: List[Dict[str, Any]], location: str) -> List[Dict[str, Any]]:
         """NO LOCATION FILTERING - return all events for maximum coverage."""
@@ -1171,7 +597,7 @@ class FacebookEventsTool(BaseTool):
         thread = threading.Thread(target=playwright_worker)
         thread.daemon = True
         thread.start()
-        thread.join(timeout=180)  # 180 second timeout for intensive human-like scrolling
+        thread.join(timeout=120)  # 120 second timeout for optimized scrolling
         
         if thread.is_alive():
             print(f"[DEBUG] Playwright timeout exceeded (120s), terminating...")
@@ -1375,7 +801,7 @@ class FacebookEventsTool(BaseTool):
                         
                         # Wait much longer for initial content to fully load
                         print(f"[DEBUG] Waiting for page to fully load...")
-                        await page.wait_for_timeout(5000)  # Wait 5 seconds for initial load
+                        await page.wait_for_timeout(3000)  # Wait 3 seconds for initial load
                         
                         # Check initial page dimensions
                         initial_info = await page.evaluate("""
@@ -1411,10 +837,8 @@ class FacebookEventsTool(BaseTool):
                         # Extract initial events
                         print(f"[DEBUG] Extracting initial events...")
                         page_content = await page.content()
-                        soup = BeautifulSoup(page_content, 'html.parser')
-                        events = self._extract_events_from_page(soup, location)
-                        text_events = self._extract_events_from_raw_text(page_content, location)
-                        events.extend(text_events)
+                        # Legacy extraction methods removed - rely on GraphQL interception
+                        events = []
                         
                         # Deduplicate initial events with improved logic
                         for event in events:
@@ -1533,23 +957,23 @@ class FacebookEventsTool(BaseTool):
                             for step in range(steps):
                                 intermediate_scroll = current_scroll + (target_scroll - current_scroll) * (step + 1) / steps
                                 await page.evaluate(f'window.scrollTo({{ top: {intermediate_scroll}, behavior: "smooth" }})')
-                                await page.wait_for_timeout(250)  # 250ms between micro-scrolls = very slow
+                                await page.wait_for_timeout(150)  # 150ms between micro-scrolls = faster
                             
                             # Method 2: Pause at new position (like reading content)
                             print(f"[DEBUG] Pausing at scroll position {target_scroll} (reading content)...")
-                            await page.wait_for_timeout(2000)  # 2 second pause like human reading
+                            await page.wait_for_timeout(1500)  # 1.5 second pause like human reading
                             
                             # Method 3: Check if we're near bottom and need to wait longer
                             near_bottom = target_scroll >= scroll_info['maxScrollY'] * 0.8
                             
                             if near_bottom:
                                 print(f"[DEBUG] Near bottom - waiting longer for pagination trigger...")
-                                await page.wait_for_timeout(4000)  # Wait longer near bottom
+                                await page.wait_for_timeout(3000)  # Wait longer near bottom
                                 
                                 # If at bottom, wait even longer like your manual behavior
                                 if target_scroll >= scroll_info['maxScrollY'] - 50:
                                     print(f"[DEBUG] At bottom - extended wait for GraphQL pagination...")
-                                    await page.wait_for_timeout(6000)  # 6 second wait at bottom
+                                    await page.wait_for_timeout(4000)  # 4 second wait at bottom
                             
                             # Skip button clicking - focus on scroll position detection
                             
@@ -1929,137 +1353,4 @@ class FacebookEventsTool(BaseTool):
 
 
 
-    async def _extract_events_from_page_playwright_async(self, page, location: str) -> List[Dict[str, Any]]:
-        """Extract events from a Playwright page with dynamic content"""
-        try:
-            events = []
-            
-            # Get the page content
-            page_content = await page.content()
-            soup = BeautifulSoup(page_content, 'html.parser')
-            
-            # Use our existing extraction methods first
-            extracted_events = self._extract_events_from_page(soup, location)
-            events.extend(extracted_events)
-            
-            # Also try to extract from the raw page text
-            text_events = self._extract_events_from_raw_text(page_content, location)
-            events.extend(text_events)
-            
-            # Try to find events using Playwright's more powerful selectors
-            try:
-                # Look for event cards using various selectors
-                event_selectors = [
-                    '[data-testid*="event"]',
-                    '[aria-label*="event" i]',
-                    'a[href*="/events/"]',
-                    '[role="article"]',
-                    'div:has(a[href*="/events/"])',
-                ]
-                
-                for selector in event_selectors:
-                    try:
-                        elements = await page.locator(selector).all()
-                        print(f"[DEBUG] Found {len(elements)} elements with selector: {selector}")
-                        
-                        for i, element in enumerate(elements[:20]):  # Limit to 20 per selector
-                            try:
-                                # Extract text content and links
-                                text_content = await element.text_content()
-                                if not text_content or len(text_content.strip()) < 10:
-                                    continue
-                                
-                                # Try to get event URL
-                                event_url = None
-                                try:
-                                    links = await element.locator('a[href*="/events/"]').all()
-                                    if links:
-                                        href = await links[0].get_attribute('href')
-                                        if href:
-                                            if href.startswith('/'):
-                                                event_url = f"https://www.facebook.com{href}"
-                                            elif href.startswith('http'):
-                                                event_url = href
-                                except:
-                                    pass
-                                
-                                # Extract event ID from URL if available
-                                event_id = None
-                                if event_url:
-                                    id_match = re.search(r'/events/(\d+)', event_url)
-                                    if id_match:
-                                        event_id = id_match.group(1)
-                                
-                                # Try to extract title (first line or most prominent text)
-                                title_lines = [line.strip() for line in text_content.split('\n') if line.strip()]
-                                title = title_lines[0] if title_lines else f"Facebook Event {event_id or i+1}"
-                                
-                                # Basic validation for title
-                                if (len(title) < 5 or 
-                                    title.lower().startswith(('http', 'www', 'facebook')) or
-                                    re.match(r'^[0-9\-:\/\s]+$', title)):
-                                    # Try next line
-                                    title = title_lines[1] if len(title_lines) > 1 else f"Facebook Event {event_id or i+1}"
-                                
-                                # Look for date information
-                                date_info = "Date not specified"
-                                date_patterns = [
-                                    r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}[^0-9]{0,20}202[4-9]',
-                                    r'\d{1,2}\/\d{1,2}\/202[4-9]',
-                                    r'202[4-9]-\d{2}-\d{2}',
-                                    r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[^0-9]*\d{1,2}',
-                                    r'(Today|Tomorrow|This weekend|Next week)'
-                                ]
-                                
-                                for pattern in date_patterns:
-                                    date_match = re.search(pattern, text_content, re.IGNORECASE)
-                                    if date_match:
-                                        date_info = date_match.group(0)
-                                        break
-                                
-                                # Create event object
-                                event = {
-                                    "title": title[:100],
-                                    "description": text_content[:200] + "..." if len(text_content) > 200 else text_content,
-                                    "when": date_info,
-                                    "address": location,
-                                    "contact_email": "",
-                                    "phone_number": "",
-                                    "website": event_url or f"https://www.facebook.com/events/search?q={location}",
-                                    "source": "Facebook (Playwright)",
-                                    "attending_count": 0,
-                                    "interested_count": 0
-                                }
-                                
-                                if event_id:
-                                    event["id"] = event_id
-                                
-                                events.append(event)
-                                print(f"[DEBUG] Extracted Playwright event: {title[:50]}...")
-                                
-                            except Exception as e:
-                                print(f"[DEBUG] Error extracting individual event: {e}")
-                                continue
-                                
-                    except Exception as e:
-                        print(f"[DEBUG] Error with selector {selector}: {e}")
-                        continue
-                        
-            except Exception as e:
-                print(f"[DEBUG] Error in Playwright event extraction: {e}")
-            
-            # Deduplicate events
-            unique_events = {}
-            for event in events:
-                # Use multiple identifiers for deduplication
-                key = event.get('id') or event.get('website') or event.get('title', '')
-                if key and key not in unique_events:
-                    unique_events[key] = event
-            
-            final_events = list(unique_events.values())
-            print(f"[DEBUG] Playwright extraction: {len(final_events)} unique events")
-            return final_events
-            
-        except Exception as e:
-            print(f"[DEBUG] Error in Playwright page extraction: {e}")
-            return []
+
