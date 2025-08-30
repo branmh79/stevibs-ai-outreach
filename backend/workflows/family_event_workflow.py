@@ -3,6 +3,7 @@ from models.workflow_state import WorkflowState
 from nodes.coordination_node import coordination_node
 from nodes.search_node import search_node
 from nodes.facebook_events_node import facebook_events_node
+from nodes.macaronikid_events_node import macaronikid_events_node
 
 
 def create_family_event_workflow():
@@ -12,12 +13,14 @@ def create_family_event_workflow():
 
     # register nodes
     sg.add_node("facebook_events", facebook_events_node)
+    sg.add_node("macaronikid_events", macaronikid_events_node)
 
-    # entry point - go directly to Facebook events
+    # entry point - go to Facebook events first
     sg.set_entry_point("facebook_events")
 
-    # Simple flow: facebook_events -> END
-    sg.add_edge("facebook_events", END)
+    # Flow: facebook_events -> macaronikid_events -> END
+    sg.add_edge("facebook_events", "macaronikid_events")
+    sg.add_edge("macaronikid_events", END)
 
     return sg.compile()
 

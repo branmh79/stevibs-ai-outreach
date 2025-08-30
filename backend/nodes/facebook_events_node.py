@@ -43,11 +43,14 @@ def facebook_events_node(state: WorkflowState) -> dict:
         else:
             state.message = "No Facebook events found"
         
-        # Mark as complete since this is the only node we're running
-        state.is_complete = True
+        # Update source counts
+        if "Facebook" not in state.source_counts:
+            state.source_counts["Facebook"] = 0
+        state.source_counts["Facebook"] += len(facebook_events) if facebook_events else 0
         
     except Exception as e:
         state.error = f"Error fetching Facebook events: {str(e)}"
+        state.errors.append(f"Facebook error: {str(e)}")
     
     # Return only the fields that changed (LangGraph requirement)
     patch = {}
@@ -57,7 +60,9 @@ def facebook_events_node(state: WorkflowState) -> dict:
         patch["message"] = state.message
     if state.error:
         patch["error"] = state.error
-    if state.is_complete:
-        patch["is_complete"] = True
+    if state.source_counts:
+        patch["source_counts"] = state.source_counts
+    if state.errors:
+        patch["errors"] = state.errors
     
     return patch
