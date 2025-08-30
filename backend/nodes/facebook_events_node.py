@@ -53,6 +53,7 @@ def facebook_events_node(state: WorkflowState) -> dict:
         state.errors.append(f"Facebook error: {str(e)}")
     
     # Return only the fields that changed (LangGraph requirement)
+    print(f"[DEBUG] Facebook node: Returning patch with {len(state.events)} events")
     patch = {}
     if state.events:
         patch["events"] = state.events

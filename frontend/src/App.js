@@ -42,7 +42,17 @@ function App() {
         setError(data.error);
       } else if (data.success && data.events) {
         setEvents(data.events);
-        setSuccess(`Found ${data.events.length} family events near ${location}`);
+        const facebookCount = data.events.filter(e => e.source && e.source.includes('Facebook')).length;
+        const macaroniCount = data.events.filter(e => e.source === 'MacaroniKID').length;
+        let successMsg = `Found ${data.events.length} family events near ${location}`;
+        if (facebookCount > 0 && macaroniCount > 0) {
+          successMsg += ` (${facebookCount} Facebook, ${macaroniCount} MacaroniKID)`;
+        } else if (facebookCount > 0) {
+          successMsg += ` (${facebookCount} from Facebook)`;
+        } else if (macaroniCount > 0) {
+          successMsg += ` (${macaroniCount} from MacaroniKID)`;
+        }
+        setSuccess(successMsg);
       } else {
         setError('No family events found.');
       }
@@ -90,47 +100,98 @@ function App() {
       {loading && <div className="loading">Searching for family-focused events...</div>}
 
       {events.length > 0 && (
-        <div className="events-table">
-          <div className="table-header">
-            <h2>Family Events</h2>
-          </div>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>When</th>
-                  <th>Interest</th>
-                  <th>Website</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event, index) => (
-                  <tr key={index}>
-                    <td className="event-title">
-                      {event.title || 'Untitled Event'}
-                    </td>
-                    <td className="event-meta">{event.when || 'N/A'}</td>
-                    <td className="event-meta">{`${event.interested_count || 0} interested / ${event.attending_count || 0} going`}</td>
-                    <td>
-                      {event.website ? (
-                        <a
-                          href={event.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="event-website"
-                        >
-                          Visit Website
-                        </a>
-                      ) : (
-                        'N/A'
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="events-container">
+          {/* Facebook Events Table */}
+          {events.filter(event => event.source && event.source.includes('Facebook')).length > 0 && (
+            <div className="events-table">
+              <div className="table-header">
+                <h2>Facebook Events ({events.filter(event => event.source && event.source.includes('Facebook')).length})</h2>
+              </div>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>When</th>
+                      <th>Interest</th>
+                      <th>Website</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.filter(event => event.source && event.source.includes('Facebook')).map((event, index) => (
+                      <tr key={`facebook-${index}`}>
+                        <td className="event-title">
+                          {event.title || 'Untitled Event'}
+                        </td>
+                        <td className="event-meta">{event.when || 'N/A'}</td>
+                        <td className="event-meta">{`${event.interested_count || 0} interested / ${event.attending_count || 0} going`}</td>
+                        <td>
+                          {event.website ? (
+                            <a
+                              href={event.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="event-website"
+                            >
+                              Visit Website
+                            </a>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* MacaroniKID Events Table */}
+          {events.filter(event => event.source === 'MacaroniKID').length > 0 && (
+            <div className="events-table">
+              <div className="table-header">
+                <h2>MacaroniKID Events ({events.filter(event => event.source === 'MacaroniKID').length})</h2>
+              </div>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>When</th>
+                      <th>Who</th>
+                      <th>Website</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.filter(event => event.source === 'MacaroniKID').map((event, index) => (
+                      <tr key={`macaronikid-${index}`}>
+                        <td className="event-title">
+                          {event.title || 'Untitled Event'}
+                        </td>
+                        <td className="event-meta">{event.when || 'N/A'}</td>
+                        <td className="event-meta">{event.description || 'Everyone'}</td>
+                        <td>
+                          {event.website ? (
+                            <a
+                              href={event.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="event-website"
+                            >
+                              Visit Website
+                            </a>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
