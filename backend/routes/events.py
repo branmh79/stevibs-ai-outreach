@@ -54,38 +54,51 @@ async def get_macaronikid_events(
         macaroni_tool = MacaroniKIDEventsTool()
         
         # Check if location has a configured URL
-        url = macaroni_tool.location_urls.get(location)
+        location_info = macaroni_tool.location_config.get(location)
+        url = location_info["url"] if location_info else None
         
         # Execute MacaroniKID search (using new API approach)
         result = await macaroni_tool.execute_async(location)
         events = result.get('events', [])
         
         # Analyze results - with API, we either get real events or mock events
-        real_events = [e for e in events if not e.get('event_id', '').startswith('mock')]
-        mock_events = [e for e in events if e.get('event_id', '').startswith('mock')]
+        real_events = [e for e in events if not e.get('id', '').startswith('mock')]
+        mock_events = [e for e in events if e.get('id', '').startswith('mock')]
         
+        # Check if location is supported and build appropriate message
+        if location_info and (location_info["url"] == "N/A" or not location_info.get("townOwnerId")):
+            message = "❌ MacaroniKID not available for this location"
+            api_working = False
+        elif len(real_events) > 0:
+            message = f"🎉 Found {len(real_events)} real events via API!"
+            api_working = True
+        elif len(mock_events) > 0:
+            message = f"⚠️ Returned {len(mock_events)} mock events"
+            api_working = False
+        else:
+            message = "❌ No events found"
+            api_working = False
+
         # Build response
         response = {
             "success": True,
             "location": location,
             "url": url,
-            "method": "Network Interception",
+            "method": "Direct API Call",
             "total_events": len(events),
             "real_events": len(real_events),
             "mock_events": len(mock_events),
-            "network_interception_working": len(real_events) > 0,
+            "api_working": api_working,
             "events": events,
             "source_counts": {"MacaroniKID": len(events)},
-            "message": f"🎉 Found {len(real_events)} real events via network interception!" if len(real_events) > 0 else 
-                      f"⚠️ Returned {len(mock_events)} mock events" if len(mock_events) > 0 else 
-                      "❌ No events found"
+            "message": message
         }
         
         if debug:
             response["debug_info"] = {
                 "url_configured": url is not None and url != "N/A",
                 "url_value": url,
-                "available_locations": list(macaroni_tool.location_urls.keys()),
+                "available_locations": list(macaroni_tool.location_config.keys()),
                 "sample_event": events[0] if events else None
             }
         

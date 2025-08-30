@@ -40,7 +40,13 @@ def macaronikid_events_node(state: WorkflowState) -> dict:
                 )
             state.message = f"Found {len(macaronikid_events)} MacaroniKID events"
         else:
-            state.message = "No MacaroniKID events found"
+            # Check if location is supported
+            macaronikid_tool = MacaroniKIDEventsTool()
+            location_info = macaronikid_tool.location_config.get(location)
+            if location_info and (location_info["url"] == "N/A" or not location_info["townOwnerId"]):
+                state.message = "MacaroniKID not available for this location"
+            else:
+                state.message = "No MacaroniKID events found"
         
         # Update source counts
         if "MacaroniKID" not in state.source_counts:

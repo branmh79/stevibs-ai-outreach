@@ -26,32 +26,65 @@ class MacaroniKIDEventsTool(BaseTool):
             'Sec-Fetch-Site': 'cross-site'
         })
         
-        # Location to MacaroniKID URL mapping
-        self.location_urls = {
-            "Covington, GA": "https://conyers.macaronikid.com/events/calendar",
-            "Douglasville, GA": "N/A",
-            "Duluth, GA": "https://duluth.macaronikid.com/events/calendar",
-            "Gainesville, GA": "https://gainesvillega.macaronikid.com/events/calendar",
-            "Hiram, GA": "https://dallasga.macaronikid.com/events/calendar",
-            "Fayetteville, GA": "https://peachtreecity.macaronikid.com/events/calendar",
-            "Snellville, GA": "https://snellville.macaronikid.com/events/calendar",
-            "Stockbridge, GA": "https://mcdonough.macaronikid.com/events/calendar",
-            "Warner Robins, GA": "N/A",
-            "Findlay, OH": "https://findlay.macaronikid.com/events/calendar",
+        # Location to MacaroniKID configuration mapping
+        self.location_config = {
+            "Covington, GA": {
+                "url": "https://conyers.macaronikid.com/events/calendar",
+                "townOwnerId": "58252a7a6f1aaf645c94f0da"
+            },
+            "Douglasville, GA": {
+                "url": "N/A",
+                "townOwnerId": None
+            },
+            "Duluth, GA": {
+                "url": "https://duluth.macaronikid.com/events/calendar",
+                "townOwnerId": "58252a7d6f1aaf645c94f28f"
+            },
+            "Gainesville, GA": {
+                "url": "https://gainesvillega.macaronikid.com/events/calendar",
+                "townOwnerId": "58252a7e6f1aaf645c94f2e1"
+            },
+            "Hiram, GA": {
+                "url": "https://dallasga.macaronikid.com/events/calendar",
+                "townOwnerId": "58252a7b6f1aaf645c94f137"
+            },
+            "Fayetteville, GA": {
+                "url": "https://peachtreecity.macaronikid.com/events/calendar",
+                "townOwnerId": "58252a7d6f1aaf645c94f26c"
+            },
+            "Snellville, GA": {
+                "url": "https://snellville.macaronikid.com/events/calendar",
+                "townOwnerId": "58252a7b6f1aaf645c94f16f"
+            },
+            "Stockbridge, GA": {
+                "url": "https://mcdonough.macaronikid.com/events/calendar",
+                "townOwnerId": "58252a7f6f1aaf645c94f3e1"
+            },
+            "Warner Robins, GA": {
+                "url": "N/A",
+                "townOwnerId": None
+            },
+            "Findlay, OH": {
+                "url": "N/A",
+                "townOwnerId": None
+            },
         }
     
     async def _search_events(self, location: str) -> List[Dict[str, Any]]:
         """Search for MacaroniKID events using direct API calls"""
         try:
-            macaroni_url = self.location_urls.get(location)
+            location_info = self.location_config.get(location)
             
-            if not macaroni_url or macaroni_url == "N/A":
-                print(f"[INFO] No MacaroniKID URL configured for location: {location}")
+            if not location_info:
+                print(f"[INFO] Location not configured: {location}")
                 return self._get_mock_events(location)
             
-            # For now, only Snellville is mapped to a townOwnerId
-            # TODO: Map other locations to their respective townOwnerIds
-            town_owner_id = "58252a7b6f1aaf645c94f16f"  # Snellville townOwnerId
+            macaroni_url = location_info["url"]
+            town_owner_id = location_info["townOwnerId"]
+            
+            if macaroni_url == "N/A" or not town_owner_id:
+                print(f"[INFO] MacaroniKID not available for location: {location}")
+                return []  # Return empty list instead of mock events
             
             # Set dynamic date range - today through next 2 weeks
             current_date = datetime.now(timezone.utc)
