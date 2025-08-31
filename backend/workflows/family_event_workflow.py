@@ -4,6 +4,7 @@ from nodes.coordination_node import coordination_node
 from nodes.search_node import search_node
 from nodes.facebook_events_node import facebook_events_node
 from nodes.macaronikid_events_node import macaronikid_events_node
+from nodes.schools_node import schools_node
 
 
 def create_family_event_workflow():
@@ -11,16 +12,17 @@ def create_family_event_workflow():
 
     sg = StateGraph(WorkflowState)
 
-    # register nodes
-    sg.add_node("facebook_events", facebook_events_node)
-    sg.add_node("macaronikid_events", macaronikid_events_node)
+    # register nodes - TEMPORARILY USING ONLY SCHOOLS TOOL TO AVOID RATE LIMITING
+    # TODO: Re-enable other tools later
+    # sg.add_node("facebook_events", facebook_events_node)
+    # sg.add_node("macaronikid_events", macaronikid_events_node)
+    sg.add_node("schools", schools_node)
 
-    # entry point - go to Facebook events first
-    sg.set_entry_point("facebook_events")
+    # entry point - go to Schools events only (temporarily)
+    sg.set_entry_point("schools")
 
-    # Flow: facebook_events -> macaronikid_events -> END
-    sg.add_edge("facebook_events", "macaronikid_events")
-    sg.add_edge("macaronikid_events", END)
+    # Flow: schools -> END (simple flow while testing)
+    sg.add_edge("schools", END)
 
     return sg.compile()
 

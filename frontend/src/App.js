@@ -44,13 +44,17 @@ function App() {
         setEvents(data.events);
         const facebookCount = data.events.filter(e => e.source && e.source.includes('Facebook')).length;
         const macaroniCount = data.events.filter(e => e.source === 'MacaroniKID').length;
+        const schoolsCount = data.events.filter(e => e.source && e.source.includes('Schools')).length;
         let successMsg = `Found ${data.events.length} family events near ${location}`;
-        if (facebookCount > 0 && macaroniCount > 0) {
-          successMsg += ` (${facebookCount} Facebook, ${macaroniCount} MacaroniKID)`;
-        } else if (facebookCount > 0) {
-          successMsg += ` (${facebookCount} from Facebook)`;
-        } else if (macaroniCount > 0) {
-          successMsg += ` (${macaroniCount} from MacaroniKID)`;
+        
+        // Build source counts message
+        const sourceCounts = [];
+        if (facebookCount > 0) sourceCounts.push(`${facebookCount} Facebook`);
+        if (macaroniCount > 0) sourceCounts.push(`${macaroniCount} MacaroniKID`);
+        if (schoolsCount > 0) sourceCounts.push(`${schoolsCount} Schools`);
+        
+        if (sourceCounts.length > 0) {
+          successMsg += ` (${sourceCounts.join(', ')})`;
         }
         setSuccess(successMsg);
       } else {
@@ -180,6 +184,52 @@ function App() {
                               className="event-website"
                             >
                               Visit Website
+                            </a>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Schools Events Table */}
+          {events.filter(event => event.source && event.source.includes('Schools')).length > 0 && (
+            <div className="events-table">
+              <div className="table-header">
+                <h2>School Events ({events.filter(event => event.source && event.source.includes('Schools')).length})</h2>
+              </div>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>When</th>
+                      <th>School</th>
+                      <th>Website</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.filter(event => event.source && event.source.includes('Schools')).map((event, index) => (
+                      <tr key={`schools-${index}`}>
+                        <td className="event-title">
+                          {event.title || 'Untitled Event'}
+                        </td>
+                        <td className="event-meta">{event.when || 'N/A'}</td>
+                        <td className="event-meta">{event.address || 'School Event'}</td>
+                        <td>
+                          {event.website ? (
+                            <a
+                              href={event.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="event-website"
+                            >
+                              Visit Calendar
                             </a>
                           ) : (
                             'N/A'

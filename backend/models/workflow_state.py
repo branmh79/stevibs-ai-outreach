@@ -8,6 +8,7 @@ class EventData(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     when: Optional[str] = None  # e.g., day_time_sentence
+    address: Optional[str] = None  # Location/venue information
     interested_count: Optional[int] = None
     attending_count: Optional[int] = None
     contact_email: Optional[str] = None  # retained for other tools

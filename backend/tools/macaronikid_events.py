@@ -3,7 +3,7 @@ import json
 import urllib.parse
 import re
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from typing import List, Dict, Any, Optional
 from .base_tool import BaseTool
 
@@ -11,6 +11,10 @@ from .base_tool import BaseTool
 class MacaroniKIDEventsTool(BaseTool):
     name = "macaronikid_events"
     description = "Fetch family events from MacaroniKID using their API"
+    
+    # Date filtering configuration - easily customizable
+    DEFAULT_DAYS_AHEAD = 14  # Default: next 2 weeks
+    INCLUDE_TODAY = True     # Include events happening today
     
     def __init__(self):
         self.session = requests.Session()
@@ -86,13 +90,19 @@ class MacaroniKIDEventsTool(BaseTool):
                 print(f"[INFO] MacaroniKID not available for location: {location}")
                 return []  # Return empty list instead of mock events
             
-            # Set dynamic date range - today through next 2 weeks
+            # Set dynamic date range using configurable settings
             current_date = datetime.now(timezone.utc)
-            two_weeks_from_now = current_date + timedelta(days=14)
+            if not self.INCLUDE_TODAY:
+                # Start from tomorrow if today is excluded
+                current_date = current_date + timedelta(days=1)
+            
+            end_date_calc = current_date + timedelta(days=self.DEFAULT_DAYS_AHEAD)
             
             # Format dates for the API
             start_date = current_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
-            end_date = two_weeks_from_now.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+            end_date = end_date_calc.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+            
+            print(f"[DEBUG] MacaroniKID date range: {current_date.strftime('%Y-%m-%d')} to {end_date_calc.strftime('%Y-%m-%d')} ({self.DEFAULT_DAYS_AHEAD} days ahead)")
             
             # Build the API query
             query = {
@@ -218,7 +228,8 @@ class MacaroniKIDEventsTool(BaseTool):
             'events': events,
             'location': location,
             'total_events': len(events),
-            'source': 'MacaroniKID'
+            'source': 'MacaroniKID',
+            'message': f"Found {len(events)} MacaroniKID events (next {self.DEFAULT_DAYS_AHEAD} days)"
         }
     
     async def execute_async(self, location: str) -> Dict[str, Any]:
@@ -229,5 +240,6 @@ class MacaroniKIDEventsTool(BaseTool):
             'events': events,
             'location': location,
             'total_events': len(events),
-            'source': 'MacaroniKID'
+            'source': 'MacaroniKID',
+            'message': f"Found {len(events)} MacaroniKID events (next {self.DEFAULT_DAYS_AHEAD} days)"
         }
