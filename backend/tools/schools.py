@@ -34,15 +34,25 @@ class SchoolsTool(BaseTool):
             "Snellville, GA": {
                 "elementary": [
                     "https://brookwoodes.gcpsk12.org/calendar",
-                    "https://shilohes.gcpsk12.org/calendar-c3"
+                    "https://shilohes.gcpsk12.org/calendar-c3",
+                    "https://centervillees.gcpsk12.org/calendar",
+                    "https://nortones.gcpsk12.org/calendar",
+                    "https://brittes.gcpsk12.org/calendar",
+                    "https://tripes.gcpsk12.org/calendar",
+                    "https://pharres.gcpsk12.org/calendar",
                 ],
                 "middle": [
                     "https://snellvillems.gcpsk12.org/calendar",
-                    "https://shilohms.gcpsk12.org/calendar"
+                    "https://shilohms.gcpsk12.org/calendar",
+                    "https://fiveforksms.gcpsk12.org/calendar",
+                    "https://crewsms.gcpsk12.org/calendar",
+                    "https://baycreekms.gcpsk12.org/calendar",
+                    "https://richardsms.gcpsk12.org/calendar",
                 ],
                 "high": [
                     "https://southgwinnetths.gcpsk12.org/calendar",
-                    "https://shilohhs.gcpsk12.org/calendar"
+                    "https://shilohhs.gcpsk12.org/calendar",
+                    "https://brookwoodhs.gcpsk12.org/calendar"
                 ]
             }
             # TODO: Add other locations as needed
