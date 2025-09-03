@@ -45,6 +45,7 @@ function App() {
         const facebookCount = data.events.filter(e => e.source && e.source.includes('Facebook')).length;
         const macaroniCount = data.events.filter(e => e.source === 'MacaroniKID').length;
         const schoolsCount = data.events.filter(e => e.source && e.source.includes('Schools')).length;
+        const churchesCount = data.events.filter(e => e.category === 'church' || (e.source && e.source.includes('church'))).length;
         let successMsg = `Found ${data.events.length} family events near ${location}`;
         
         // Build source counts message
@@ -52,6 +53,7 @@ function App() {
         if (facebookCount > 0) sourceCounts.push(`${facebookCount} Facebook`);
         if (macaroniCount > 0) sourceCounts.push(`${macaroniCount} MacaroniKID`);
         if (schoolsCount > 0) sourceCounts.push(`${schoolsCount} Schools`);
+        if (churchesCount > 0) sourceCounts.push(`${churchesCount} Churches`);
         
         if (sourceCounts.length > 0) {
           successMsg += ` (${sourceCounts.join(', ')})`;
@@ -230,6 +232,64 @@ function App() {
                               className="event-website"
                             >
                               Visit Calendar
+                            </a>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Churches Events Table */}
+          {events.filter(event => event.category === 'church' || (event.source && event.source.includes('church'))).length > 0 && (
+            <div className="events-table">
+              <div className="table-header">
+                <h2>Church Events ({events.filter(event => event.category === 'church' || (event.source && event.source.includes('church'))).length})</h2>
+              </div>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>When</th>
+                      <th>Church</th>
+                      <th>Description</th>
+                      <th>Website</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.filter(event => event.category === 'church' || (event.source && event.source.includes('church'))).map((event, index) => (
+                      <tr key={`churches-${index}`}>
+                        <td className="event-title">
+                          {event.title || 'Untitled Event'}
+                        </td>
+                        <td className="event-meta">{event.when || 'N/A'}</td>
+                        <td className="event-meta">{event.source || 'Church Event'}</td>
+                        <td className="event-description">
+                          {event.description ? (
+                            <span title={event.description}>
+                              {event.description.length > 100 
+                                ? `${event.description.substring(0, 100)}...` 
+                                : event.description}
+                            </span>
+                          ) : (
+                            'No description'
+                          )}
+                        </td>
+                        <td>
+                          {event.website ? (
+                            <a
+                              href={event.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="event-website"
+                            >
+                              Learn More
                             </a>
                           ) : (
                             'N/A'

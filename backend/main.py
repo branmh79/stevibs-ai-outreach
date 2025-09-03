@@ -52,6 +52,40 @@ async def test_macaronikid():
             "message": "❌ MacaroniKID test failed"
         }
 
+@app.get("/test/churches")
+async def test_churches():
+    """Test Churches tool with configured churches in Snellville"""
+    print("[API] Churches test endpoint called")
+    
+    from tools.churches import ChurchesTool
+    
+    tool = ChurchesTool()
+    
+    # Test with Snellville
+    test_location = "Snellville, GA"
+    
+    try:
+        result = tool.execute(test_location)
+        
+        return {
+            "success": result.get("success", False),
+            "location": test_location,
+            "total_churches": result.get("total_churches", 0),
+            "events_found": len(result.get("events", [])),
+            "events": result.get("events", [])[:5],  # Return first 5 events for preview
+            "message": result.get("message", "Churches tool executed"),
+            "church_configs": len(tool.get_church_configs(test_location)),
+            "status": "✅ Churches tool working!" if result.get("success") else "⚠️ Churches tool needs configuration"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "location": test_location,
+            "message": "❌ Churches test failed"
+        }
+
 @app.get("/test/playwright")
 async def test_playwright():
     """Test if Playwright is working in Docker environment"""
