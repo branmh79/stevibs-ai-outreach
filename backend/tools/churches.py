@@ -43,9 +43,13 @@ class ChurchesTool(BaseTool):
                             "location_filter": "Snellville",  # Filter for this campus
                             "campus_selector": ".filter__select option"
                         }
+                    },
+                    {
+                        "name": "Grace", 
+                        "url": "https://gracesnellville.churchcenter.com/registrations"
                     }
                     
-                    # Add churches here - the tool will auto-detect selectors
+                    # Add more churches here - the tool will auto-detect selectors
                 ]
             }
             # TODO: Add other locations as needed
