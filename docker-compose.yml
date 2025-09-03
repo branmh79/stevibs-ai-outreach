@@ -3,6 +3,7 @@ version: "3.9"
 services:
   backend:
     build: ./backend
+    platform: linux/amd64  # Force x86_64 architecture for Playwright compatibility
     volumes:
       - ./backend:/app
     working_dir: /app
@@ -14,6 +15,7 @@ services:
 
   frontend:
     build: ./frontend
+    platform: linux/amd64  # Keep frontend consistent too
     ports:
       - "3000:80"
     depends_on:
