@@ -46,7 +46,14 @@ class ChurchesTool(BaseTool):
                     },
                     {
                         "name": "Grace", 
-                        "url": "https://gracesnellville.churchcenter.com/registrations"
+                        "url": "https://gracesnellville.churchcenter.com/registrations",
+                        "custom_selectors": {
+                            # HTML structure: <article class="css-1k2ec0g"><a href="/registrations/events/..."><h3>Title</h3><p>Date</p></a></article>
+                            "event_container": "article.css-1k2ec0g",
+                            "title": "h3.lh-1\\.333.c-tint0.fs-3.fw-600",  # Escaped dots for CSS selector
+                            "date": "p.css-l49wdp",
+                            "url": "a"
+                        }
                     }
                     
                     # Add more churches here - the tool will auto-detect selectors
@@ -225,6 +232,38 @@ class ChurchesTool(BaseTool):
             if "12stone.com" in church_url:
                 return self._scrape_12stone(church_name, church_url, location, custom_selectors)
             
+            # Special handling for Grace Snellville
+            if "gracesnellville.churchcenter.com" in church_url:
+                import asyncio
+                import threading
+                
+                # Use a separate thread to run the async Playwright code
+                def run_async_scraper():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        return loop.run_until_complete(self._scrape_grace_snellville(church_name, church_url, location, custom_selectors))
+                    finally:
+                        loop.close()
+                
+                result_container = [None]
+                exception_container = [None]
+                
+                def thread_target():
+                    try:
+                        result_container[0] = run_async_scraper()
+                    except Exception as e:
+                        exception_container[0] = e
+                
+                thread = threading.Thread(target=thread_target)
+                thread.start()
+                thread.join()
+                
+                if exception_container[0]:
+                    raise exception_container[0]
+                
+                return result_container[0] or []
+            
             # Add other custom church handlers here as needed
             print(f"[WARNING] No custom handler for {church_name}")
             return []
@@ -368,6 +407,175 @@ class ChurchesTool(BaseTool):
             print(f"[ERROR] 12Stone custom scraper failed: {str(e)}")
             return []
 
+    async def _scrape_grace_snellville(self, church_name: str, church_url: str, location: str, selectors: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Custom scraper for Grace Snellville church events using Playwright"""
+        try:
+            print(f"[INFO] Grace Snellville custom scraper for {location} (using Playwright)")
+            
+            from playwright.async_api import async_playwright
+            
+            events = []
+            
+            async with async_playwright() as p:
+                # Launch browser in headless mode
+                browser = await p.chromium.launch(headless=True)
+                context = await browser.new_context(
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                )
+                page = await context.new_page()
+                
+                try:
+                    print(f"[DEBUG] Loading page: {church_url}")
+                    await page.goto(church_url, wait_until='networkidle', timeout=30000)
+                    
+                    # Wait for events to load - look for the event containers
+                    try:
+                        print(f"[DEBUG] Waiting for event containers to load...")
+                        await page.wait_for_selector(selectors.get("event_container", "article.css-1k2ec0g"), timeout=15000)
+                    except:
+                        print(f"[DEBUG] Event containers didn't load with specific selector, trying general selectors...")
+                        # Try waiting for any common event indicators
+                        try:
+                            await page.wait_for_selector("article, [class*='event'], a[href*='registrations/events']", timeout=10000)
+                        except:
+                            print(f"[WARNING] No event containers found, proceeding with current page content")
+                    
+                    # Get the page content after JavaScript has loaded
+                    content = await page.content()
+                    soup = BeautifulSoup(content, 'html.parser')
+                    
+                    # Try multiple selector patterns for event containers
+                    possible_selectors = [
+                        selectors.get("event_container", "article.css-1k2ec0g"),
+                        "article",
+                        "[class*='css-1k2ec0g']",
+                        "a[href*='/registrations/events/']",
+                        "[class*='event']",
+                        "div[class*='card']"
+                    ]
+                    
+                    event_containers = []
+                    for selector in possible_selectors:
+                        event_containers = soup.select(selector)
+                        if event_containers:
+                            print(f"[DEBUG] Found {len(event_containers)} containers with selector: {selector}")
+                            break
+                    
+                    if not event_containers:
+                        print(f"[WARNING] No event containers found with any selector")
+                        # Save debug HTML
+                        with open("grace_debug_playwright.html", "w", encoding="utf-8") as f:
+                            f.write(content)
+                        print("Debug HTML saved to grace_debug_playwright.html")
+                        return []
+                    
+                    print(f"[DEBUG] Processing {len(event_containers)} event containers")
+                    
+                    for i, event_container in enumerate(event_containers):
+                        try:
+                            # Extract title - try multiple approaches
+                            title = None
+                            title_selectors = [
+                                selectors.get("title", "h3.lh-1\\.333.c-tint0.fs-3.fw-600"),
+                                "h3", "h2", "h1", ".title", "[class*='title']"
+                            ]
+                            
+                            for title_selector in title_selectors:
+                                title_elem = event_container.select_one(title_selector)
+                                if title_elem:
+                                    title = title_elem.get_text(strip=True)
+                                    if title:
+                                        break
+                            
+                            if not title:
+                                # Try getting title from text content
+                                text_content = event_container.get_text(strip=True)
+                                if text_content and len(text_content) < 200:  # Reasonable title length
+                                    title = text_content.split('\n')[0].strip()
+                            
+                            if not title or len(title) < 3:
+                                print(f"[DEBUG] Skipping container {i+1} - no valid title found")
+                                continue
+                            
+                            # Extract date - try multiple approaches
+                            event_date = None
+                            date_text = None
+                            date_selectors = [
+                                selectors.get("date", "p.css-l49wdp"),
+                                "p", ".date", "[class*='date']", "time"
+                            ]
+                            
+                            for date_selector in date_selectors:
+                                date_elem = event_container.select_one(date_selector)
+                                if date_elem:
+                                    date_text = date_elem.get_text(strip=True)
+                                    if date_text and any(month in date_text.lower() for month in ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']):
+                                        event_date = self._parse_date_auto(date_text)
+                                        if event_date:
+                                            break
+                            
+                            # Extract event URL
+                            event_url = None
+                            url_elem = event_container.select_one("a")
+                            if url_elem:
+                                event_url = url_elem.get('href')
+                                if event_url and event_url.startswith('/'):
+                                    # Make absolute URL
+                                    base_url = 'https://gracesnellville.churchcenter.com'
+                                    event_url = f"{base_url}{event_url}"
+                            elif event_container.name == 'a':
+                                # The container itself is an anchor
+                                event_url = event_container.get('href')
+                                if event_url and event_url.startswith('/'):
+                                    base_url = 'https://gracesnellville.churchcenter.com'
+                                    event_url = f"{base_url}{event_url}"
+                            
+                            print(f"[DEBUG] Event {i+1}: {title} | Date: {date_text or 'N/A'} | URL: {event_url or 'N/A'}")
+                            
+                            # Format date for display
+                            formatted_date = None
+                            if event_date:
+                                formatted_date = event_date.strftime("%B %d, %Y")
+                            
+                            # Try to get description from the current page content
+                            description = None
+                            desc_candidates = event_container.select('p, div, span')
+                            for candidate in desc_candidates:
+                                text = candidate.get_text(strip=True)
+                                if text and text != title and text != date_text and len(text) > 20:
+                                    description = text[:500]  # Limit length
+                                    break
+                            
+                            event = {
+                                'title': title,
+                                'date': event_date.isoformat() if event_date else None,
+                                'when': formatted_date,
+                                'time': None,
+                                'description': description,
+                                'location': f"{church_name}, {location}",
+                                'url': event_url,
+                                'source': church_name,
+                                'source_type': 'church',
+                                'source_url': church_url,
+                                'scraped_at': datetime.now().isoformat()
+                            }
+                            
+                            events.append(event)
+                            
+                        except Exception as e:
+                            print(f"[DEBUG] Failed to parse event container {i+1}: {str(e)}")
+                            continue
+                    
+                finally:
+                    await browser.close()
+            
+            print(f"[INFO] Grace Snellville custom scraper found {len(events)} events")
+            return events
+            
+        except Exception as e:
+            print(f"[ERROR] Grace Snellville custom scraper failed: {str(e)}")
+            return []
+
     def _scrape_church_calendar_auto(self, church_name: str, church_url: str, location: str) -> List[Dict[str, Any]]:
         """Auto-detect selectors and scrape events from a church website"""
         try:
@@ -501,12 +709,33 @@ class ChurchesTool(BaseTool):
             formats = [
                 "%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%d/%m/%Y",
                 "%B %d, %Y", "%b %d, %Y", "%A, %B %d, %Y", "%A, %b %d, %Y",
+                "%d %B %Y", "%d %b %Y",  # Added formats for "9 November 2025" and "9 Nov 2025"
                 "%B %d", "%b %d", "%A, %B %d", "%A, %b %d",
+                "%d %B", "%d %b",  # Added formats for "9 November" and "9 Nov"
                 "%m/%d", "%m-%d", "%d/%m", "%d-%m"
             ]
             
-            # Clean up date text
+            # Clean up date text and handle date ranges
             import re
+            original_date_text = date_text
+            
+            # Handle date ranges by taking the first date
+            if '–' in date_text or '—' in date_text:  # Handle en-dash and em-dash (but not regular dash to avoid splitting "2025-26")
+                # For patterns like "3–5 October 2025", we need to be smarter
+                if re.search(r'\d+[–—]\d+\s+\w+\s+\d{4}', date_text):
+                    # Pattern: "3–5 October 2025" -> "3 October 2025"
+                    match = re.search(r'(\d+)[–—]\d+\s+(\w+\s+\d{4})', date_text)
+                    if match:
+                        date_text = f"{match.group(1)} {match.group(2)}"
+                        print(f"[DEBUG] Multi-day event detected: '{original_date_text}' -> using first date: '{date_text}'")
+                else:
+                    # For patterns like "20 August 2025 – 25 March 2026"
+                    date_parts = re.split(r'[–—]', date_text)
+                    if len(date_parts) > 1:
+                        date_text = date_parts[0].strip()
+                        print(f"[DEBUG] Date range detected: '{original_date_text}' -> using first date: '{date_text}'")
+            
+            # Clean up remaining non-alphanumeric characters except spaces, slashes, commas
             date_text = re.sub(r'[^\w\s/,-]', '', date_text).strip()
             
             for fmt in formats:
