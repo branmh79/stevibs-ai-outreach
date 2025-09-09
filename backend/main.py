@@ -67,12 +67,26 @@ async def test_churches():
     try:
         result = tool.execute(test_location)
         
+        # Debug: Show breakdown by church source
+        events = result.get("events", [])
+        scc_events = [e for e in events if e.get('source') == 'Snellville Community Church']
+        grace_events = [e for e in events if e.get('source') == 'Grace']
+        stone_events = [e for e in events if e.get('source') == '12Stone']
+        church_on_main_events = [e for e in events if e.get('source') == 'Church on Main']
+        
         return {
             "success": result.get("success", False),
             "location": test_location,
             "total_churches": result.get("total_churches", 0),
-            "events_found": len(result.get("events", [])),
-            "events": result.get("events", [])[:5],  # Return first 5 events for preview
+            "events_found": len(events),
+            "events_by_source": {
+                "Snellville Community Church": len(scc_events),
+                "Grace": len(grace_events),
+                "12Stone": len(stone_events),
+                "Church on Main": len(church_on_main_events)
+            },
+            "scc_sample_events": scc_events[:3],  # Show Snellville Community Church events
+            "events": events[:5],  # Return first 5 events for preview
             "message": result.get("message", "Churches tool executed"),
             "church_configs": len(tool.get_church_configs(test_location)),
             "status": "✅ Churches tool working!" if result.get("success") else "⚠️ Churches tool needs configuration"

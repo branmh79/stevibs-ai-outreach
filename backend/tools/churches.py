@@ -54,6 +54,30 @@ class ChurchesTool(BaseTool):
                             "date": "p.css-l49wdp",
                             "url": "a"
                         }
+                    },
+                    {
+                        "name": "Snellville Community Church",
+                        "url": "https://www.snellvillecc.org/happenings",
+                        "custom_selectors": {
+                            # Custom scraper needed for complex calendar layout
+                            "event_container": ".photogallery-column, .calendar-event",
+                            "title": ".caption-title, h3",
+                            "date": ".caption-text, .date",
+                            "url": ".caption-button, a"
+                        }
+                    },
+                    {
+                        "name": "Church on Main",
+                        "url": "https://www.churchonmain.net/events",
+                        "custom_selectors": {
+                            # Squarespace events structure
+                            "event_container": "article.eventlist-event",
+                            "title": ".eventlist-title-link",
+                            "date": ".event-date",
+                            "time": ".event-time-localized",
+                            "description": ".eventlist-description",
+                            "url": ".eventlist-title-link"
+                        }
                     }
                     
                     # Add more churches here - the tool will auto-detect selectors
@@ -263,6 +287,14 @@ class ChurchesTool(BaseTool):
                     raise exception_container[0]
                 
                 return result_container[0] or []
+            
+            # Special handling for Snellville Community Church
+            if "snellvillecc.org" in church_url:
+                return self._scrape_snellville_community_church(church_name, church_url, location, custom_selectors)
+            
+            # Special handling for Church on Main (Squarespace)
+            if "churchonmain.net" in church_url:
+                return self._scrape_church_on_main(church_name, church_url, location, custom_selectors)
             
             # Add other custom church handlers here as needed
             print(f"[WARNING] No custom handler for {church_name}")
@@ -576,6 +608,404 @@ class ChurchesTool(BaseTool):
             print(f"[ERROR] Grace Snellville custom scraper failed: {str(e)}")
             return []
 
+    def _scrape_snellville_community_church(self, church_name: str, church_url: str, location: str, selectors: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Custom scraper for Snellville Community Church events"""
+        try:
+            print(f"[INFO] Snellville Community Church custom scraper for {location}")
+            
+            response = self.session.get(church_url, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            events = []
+            
+            # Save debug HTML for inspection
+            with open("snellville_debug.html", "w", encoding="utf-8") as f:
+                f.write(response.text)
+            print("Debug HTML saved to snellville_debug.html")
+            
+            # Look for photo gallery events (like the 55+ Adult Events Calendar)
+            photo_gallery_events = soup.select('.photogallery-column')
+            print(f"[DEBUG] Found {len(photo_gallery_events)} photo gallery events")
+            
+            for i, gallery_event in enumerate(photo_gallery_events):
+                try:
+                    # Extract title from caption
+                    title_elem = gallery_event.select_one('.caption-title')
+                    if not title_elem:
+                        title_elem = gallery_event.select_one('h3')
+                    
+                    title = title_elem.get_text(strip=True) if title_elem else None
+                    if not title:
+                        print(f"[DEBUG] Gallery event {i+1}: No title found, skipping")
+                        continue
+                    
+                    # Extract description from caption text
+                    desc_elem = gallery_event.select_one('.caption-text')
+                    description = None
+                    if desc_elem:
+                        desc_text = desc_elem.get_text(strip=True)
+                        if desc_text:
+                            description = desc_text
+                    
+                    # Try to parse date from title (e.g., "September 2025")
+                    event_date = None
+                    if title:
+                        event_date = self._parse_date_auto(title)
+                    
+                    # Extract URL from caption button
+                    event_url = None
+                    url_elem = gallery_event.select_one('.caption-button')
+                    if url_elem:
+                        event_url = url_elem.get('href')
+                        if event_url and not event_url.startswith('http'):
+                            event_url = f"https://www.snellvillecc.org{event_url}" if event_url.startswith('/') else event_url
+                    
+                    print(f"[DEBUG] Gallery Event {i+1}: {title} | Date: {title} | URL: {event_url or 'N/A'}")
+                    
+                    # Format date for display
+                    formatted_date = None
+                    if event_date:
+                        formatted_date = event_date.strftime("%B %d, %Y")
+                    
+                    event = {
+                        'title': title,
+                        'date': event_date.isoformat() if event_date else None,
+                        'when': formatted_date,
+                        'time': None,
+                        'description': description,
+                        'location': f"{church_name}, {location}",
+                        'url': event_url,
+                        'source': church_name,
+                        'source_type': 'church',
+                        'source_url': church_url,
+                        'scraped_at': datetime.now().isoformat()
+                    }
+                    
+                    events.append(event)
+                    
+                except Exception as e:
+                    print(f"[DEBUG] Failed to parse gallery event {i+1}: {str(e)}")
+                    continue
+            
+            # Look for specific events listed in the happenings section
+            # Search for event headings (h3) that contain dates and event names
+            event_headings = soup.select('h3')
+            print(f"[DEBUG] Found {len(event_headings)} potential event headings")
+            
+            for heading in event_headings:
+                try:
+                    heading_text = heading.get_text(strip=True)
+                    if not heading_text or len(heading_text) < 5:
+                        continue
+                    
+                    # Look for date patterns in headings (e.g., "Wednesday, September 10 @6 p.m. - 7 p.m.")
+                    import re
+                    date_patterns = [
+                        r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s*(\w+\s+\d+)',
+                        r'(\w+\s+\d+)',
+                        r'(\d+/\d+)',
+                        r'(\w+\s+\d+,\s*\d{4})'
+                    ]
+                    
+                    has_date = False
+                    for pattern in date_patterns:
+                        if re.search(pattern, heading_text):
+                            has_date = True
+                            break
+                    
+                    if not has_date:
+                        continue
+                    
+                    # Try to parse the date from the heading
+                    event_date = self._parse_date_auto(heading_text)
+                    
+                    # Look for the next element which might contain the event title
+                    next_elem = heading.find_next_sibling()
+                    event_title = None
+                    event_url = None
+                    
+                    # Check if there's a link following this heading
+                    if next_elem and next_elem.name == 'a':
+                        event_title = next_elem.get_text(strip=True)
+                        event_url = next_elem.get('href')
+                    elif next_elem:
+                        # Look for text content that might be the event title
+                        event_title = next_elem.get_text(strip=True)
+                        # Look for links within or after this element
+                        link_elem = next_elem.select_one('a') or next_elem.find_next('a')
+                        if link_elem:
+                            event_url = link_elem.get('href')
+                    
+                    # If no separate title found, use the heading text itself
+                    if not event_title:
+                        # Try to extract event name from heading (after the date part)
+                        if '@' in heading_text:
+                            parts = heading_text.split('@')
+                            if len(parts) > 1:
+                                event_title = parts[1].strip()
+                            else:
+                                event_title = parts[0].strip()
+                        else:
+                            event_title = heading_text
+                    
+                    if event_url and not event_url.startswith('http'):
+                        event_url = f"https://www.snellvillecc.org{event_url}" if event_url.startswith('/') else event_url
+                    
+                    print(f"[DEBUG] Heading Event: {event_title} | Date: {heading_text} | URL: {event_url or 'N/A'}")
+                    
+                    # Format date for display
+                    formatted_date = None
+                    if event_date:
+                        formatted_date = event_date.strftime("%B %d, %Y")
+                    
+                    event = {
+                        'title': event_title,
+                        'date': event_date.isoformat() if event_date else None,
+                        'when': formatted_date,
+                        'time': None,
+                        'description': None,
+                        'location': f"{church_name}, {location}",
+                        'url': event_url,
+                        'source': church_name,
+                        'source_type': 'church',
+                        'source_url': church_url,
+                        'scraped_at': datetime.now().isoformat()
+                    }
+                    
+                    events.append(event)
+                    
+                except Exception as e:
+                    print(f"[DEBUG] Failed to parse heading event: {str(e)}")
+                    continue
+            
+            # Also look for calendar day events in the monthly calendar
+            calendar_events = soup.select('[class*="calendar"], td, .day')
+            print(f"[DEBUG] Found {len(calendar_events)} potential calendar elements")
+            
+            # This is a complex calendar structure, so we'll focus on the simpler extraction methods above
+            # The calendar view parsing could be added later if needed
+            
+            # Deduplicate events based on URL and title similarity
+            deduplicated_events = []
+            seen_urls = set()
+            seen_titles = set()
+            
+            for event in events:
+                event_url = event.get('url', '')
+                event_title = event.get('title', '').lower().strip()
+                
+                # Skip if we've seen this URL before
+                if event_url and event_url in seen_urls:
+                    print(f"[DEBUG] Skipping duplicate URL: {event_url}")
+                    continue
+                
+                # Skip if we've seen a very similar title before
+                is_duplicate_title = False
+                for seen_title in seen_titles:
+                    # Check if titles are very similar (one might be a date, other the actual title)
+                    if (event_title in seen_title or seen_title in event_title) and len(event_title) > 5:
+                        print(f"[DEBUG] Skipping similar title: '{event_title}' (similar to '{seen_title}')")
+                        is_duplicate_title = True
+                        break
+                
+                if is_duplicate_title:
+                    continue
+                
+                # Prefer events that have proper titles (not dates as titles)
+                # If title looks like a date, try to find a better version
+                if self._looks_like_date(event_title) and event.get('description'):
+                    # This event has a date as title and description as actual event name
+                    # Look for a better version in remaining events
+                    better_event = None
+                    description = event.get('description', '').lower().strip()
+                    
+                    for other_event in events[events.index(event)+1:]:
+                        other_title = other_event.get('title', '').lower().strip()
+                        other_url = other_event.get('url', '')
+                        
+                        # If we find an event with the description as title and same URL, prefer it
+                        if (other_title == description or description in other_title) and other_url == event_url:
+                            print(f"[DEBUG] Found better version: '{other_event.get('title')}' instead of '{event.get('title')}'")
+                            better_event = other_event
+                            break
+                    
+                    if better_event:
+                        # Use the better event instead
+                        if better_event.get('url'):
+                            seen_urls.add(better_event.get('url'))
+                        seen_titles.add(better_event.get('title', '').lower().strip())
+                        deduplicated_events.append(better_event)
+                        continue
+                
+                # Add this event
+                if event_url:
+                    seen_urls.add(event_url)
+                seen_titles.add(event_title)
+                deduplicated_events.append(event)
+            
+            print(f"[INFO] Snellville Community Church custom scraper found {len(events)} events, {len(deduplicated_events)} after deduplication")
+            return deduplicated_events
+            
+        except Exception as e:
+            print(f"[ERROR] Snellville Community Church custom scraper failed: {str(e)}")
+            return []
+
+    def _scrape_church_on_main(self, church_name: str, church_url: str, location: str, selectors: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Custom scraper for Church on Main events (Squarespace)"""
+        try:
+            print(f"[INFO] Church on Main custom scraper for {location}")
+            
+            response = self.session.get(church_url, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            events = []
+            
+            # Save debug HTML for inspection
+            with open("church_on_main_debug.html", "w", encoding="utf-8") as f:
+                f.write(response.text)
+            print("Debug HTML saved to church_on_main_debug.html")
+            
+            # Look for Squarespace event containers
+            event_containers = soup.select('article.eventlist-event')
+            print(f"[DEBUG] Found {len(event_containers)} event containers")
+            
+            for i, event_container in enumerate(event_containers):
+                try:
+                    # Extract title
+                    title_elem = event_container.select_one('.eventlist-title-link')
+                    title = title_elem.get_text(strip=True) if title_elem else None
+                    
+                    if not title:
+                        print(f"[DEBUG] Event {i+1}: No title found, skipping")
+                        continue
+                    
+                    # Extract event URL
+                    event_url = None
+                    if title_elem:
+                        event_url = title_elem.get('href')
+                        if event_url and not event_url.startswith('http'):
+                            event_url = f"https://www.churchonmain.net{event_url}"
+                    
+                    # Extract date from datetime attribute
+                    date_elem = event_container.select_one('.event-date')
+                    event_date = None
+                    date_text = None
+                    
+                    if date_elem:
+                        # Try to get date from datetime attribute first
+                        datetime_attr = date_elem.get('datetime')
+                        if datetime_attr:
+                            try:
+                                # Parse ISO date format (e.g., "2025-09-11")
+                                parsed_date = datetime.fromisoformat(datetime_attr)
+                                # Localize to Eastern time
+                                tz = pytz.timezone("America/New_York")
+                                event_date = tz.localize(parsed_date)
+                                date_text = datetime_attr
+                            except ValueError:
+                                pass
+                        
+                        # If no datetime attr, try text content
+                        if not event_date:
+                            date_text = date_elem.get_text(strip=True)
+                            if date_text:
+                                event_date = self._parse_date_auto(date_text)
+                    
+                    # Extract time information
+                    time_elem = event_container.select_one('.event-time-localized')
+                    event_time = None
+                    if time_elem:
+                        time_text = time_elem.get_text(strip=True)
+                        # Clean up time text (remove extra spaces and dashes)
+                        event_time = ' - '.join([t.strip() for t in time_text.split() if t.strip() and t.strip() != ''])
+                    
+                    # Extract description from the eventlist-description
+                    description = None
+                    desc_container = event_container.select_one('.eventlist-description')
+                    if desc_container:
+                        # Get text from all paragraphs in the description
+                        desc_paragraphs = desc_container.select('p')
+                        if desc_paragraphs:
+                            desc_texts = []
+                            for p in desc_paragraphs:
+                                p_text = p.get_text(strip=True)
+                                if p_text and len(p_text) > 10:  # Skip very short text
+                                    desc_texts.append(p_text)
+                            if desc_texts:
+                                description = ' '.join(desc_texts)[:500]  # Limit length
+                    
+                    print(f"[DEBUG] Event {i+1}: {title} | Date: {date_text or 'N/A'} | Time: {event_time or 'N/A'} | URL: {event_url or 'N/A'}")
+                    
+                    # Skip past events - only include today and future events
+                    if event_date:
+                        today = datetime.now().date()
+                        event_date_only = event_date.date()
+                        
+                        if event_date_only < today:
+                            print(f"[DEBUG] Skipping past event: {title} ({event_date_only})")
+                            continue
+                    
+                    # Format date for display
+                    formatted_date = None
+                    if event_date:
+                        formatted_date = event_date.strftime("%B %d, %Y")
+                    
+                    event = {
+                        'title': title,
+                        'date': event_date.isoformat() if event_date else None,
+                        'when': formatted_date,
+                        'time': event_time,
+                        'description': description,
+                        'location': f"{church_name}, {location}",
+                        'url': event_url,
+                        'source': church_name,
+                        'source_type': 'church',
+                        'source_url': church_url,
+                        'scraped_at': datetime.now().isoformat()
+                    }
+                    
+                    events.append(event)
+                    
+                except Exception as e:
+                    print(f"[DEBUG] Failed to parse event {i+1}: {str(e)}")
+                    continue
+            
+            print(f"[INFO] Church on Main custom scraper found {len(events)} events")
+            return events
+            
+        except Exception as e:
+            print(f"[ERROR] Church on Main custom scraper failed: {str(e)}")
+            return []
+
+    def _looks_like_date(self, text: str) -> bool:
+        """Check if text looks like a date rather than an event title"""
+        import re
+        
+        # Common date patterns
+        date_patterns = [
+            r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)',  # Day of week
+            r'\d{1,2}/\d{1,2}',  # MM/DD
+            r'\d{4}/\d{4}',      # YYYY/YYYY (like "2025/2026")
+            r'(January|February|March|April|May|June|July|August|September|October|November|December)',  # Month names
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)',  # Short month names
+            r'@\d{1,2}',         # Time indicator like "@6"
+            r'\d{1,2}\s*(a\.m\.|p\.m\.|am|pm)',  # Time formats
+            r'Deadline:'         # Deadline prefix
+        ]
+        
+        text_lower = text.lower()
+        
+        # If text contains multiple date indicators, it's likely a date
+        matches = 0
+        for pattern in date_patterns:
+            if re.search(pattern, text_lower):
+                matches += 1
+        
+        # If text has 2+ date patterns, it's probably a date/time string
+        return matches >= 2
+
     def _scrape_church_calendar_auto(self, church_name: str, church_url: str, location: str) -> List[Dict[str, Any]]:
         """Auto-detect selectors and scrape events from a church website"""
         try:
@@ -712,31 +1142,51 @@ class ChurchesTool(BaseTool):
                 "%d %B %Y", "%d %b %Y",  # Added formats for "9 November 2025" and "9 Nov 2025"
                 "%B %d", "%b %d", "%A, %B %d", "%A, %b %d",
                 "%d %B", "%d %b",  # Added formats for "9 November" and "9 Nov"
-                "%m/%d", "%m-%d", "%d/%m", "%d-%m"
+                "%m/%d", "%m-%d", "%d/%m", "%d-%m",
+                "%B %Y", "%b %Y"  # Added formats for "September 2025" and "Sep 2025"
             ]
             
             # Clean up date text and handle date ranges
             import re
             original_date_text = date_text
             
+            # Handle Snellville Community Church specific formats
+            # Remove @ symbols and time information for date parsing
+            if '@' in date_text:
+                # Extract just the date part before @
+                date_text = date_text.split('@')[0].strip()
+                print(f"[DEBUG] Removed time info: '{original_date_text}' -> '{date_text}'")
+            
+            # Handle "Deadline:" prefix
+            if 'deadline:' in date_text.lower():
+                date_text = re.sub(r'deadline:\s*', '', date_text, flags=re.IGNORECASE).strip()
+                print(f"[DEBUG] Removed deadline prefix: '{original_date_text}' -> '{date_text}'")
+            
             # Handle date ranges by taking the first date
-            if '–' in date_text or '—' in date_text:  # Handle en-dash and em-dash (but not regular dash to avoid splitting "2025-26")
+            if '–' in date_text or '—' in date_text or ' - ' in date_text:  # Handle en-dash, em-dash, and regular dash
                 # For patterns like "3–5 October 2025", we need to be smarter
-                if re.search(r'\d+[–—]\d+\s+\w+\s+\d{4}', date_text):
+                if re.search(r'\d+[–—-]\d+\s+\w+\s+\d{4}', date_text):
                     # Pattern: "3–5 October 2025" -> "3 October 2025"
-                    match = re.search(r'(\d+)[–—]\d+\s+(\w+\s+\d{4})', date_text)
+                    match = re.search(r'(\d+)[–—-]\d+\s+(\w+\s+\d{4})', date_text)
                     if match:
                         date_text = f"{match.group(1)} {match.group(2)}"
                         print(f"[DEBUG] Multi-day event detected: '{original_date_text}' -> using first date: '{date_text}'")
                 else:
-                    # For patterns like "20 August 2025 – 25 March 2026"
-                    date_parts = re.split(r'[–—]', date_text)
+                    # For patterns like "Wednesday, September 24 - Saturday, September 27"
+                    date_parts = re.split(r'[–—]|\s+-\s+', date_text)
                     if len(date_parts) > 1:
                         date_text = date_parts[0].strip()
                         print(f"[DEBUG] Date range detected: '{original_date_text}' -> using first date: '{date_text}'")
             
             # Clean up remaining non-alphanumeric characters except spaces, slashes, commas
             date_text = re.sub(r'[^\w\s/,-]', '', date_text).strip()
+            
+            # Special handling for month/year only formats (like "September 2025")
+            month_year_match = re.match(r'^(\w+)\s+(\d{4})$', date_text)
+            if month_year_match:
+                # For month/year, assume the 1st of the month
+                date_text = f"{month_year_match.group(1)} 1, {month_year_match.group(2)}"
+                print(f"[DEBUG] Month/year format: '{original_date_text}' -> '{date_text}'")
             
             for fmt in formats:
                 try:
@@ -751,7 +1201,7 @@ class ChurchesTool(BaseTool):
                 except ValueError:
                     continue
             
-            print(f"[DEBUG] Could not parse date: '{date_text}'")
+            print(f"[DEBUG] Could not parse date: '{date_text}' (cleaned from '{original_date_text}')")
             return None
             
         except Exception as e:
