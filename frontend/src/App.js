@@ -1,28 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
-// Location data (same as backend)
-const LOCATION_ADDRESSES = {
-  "Covington, GA": "3104 Highway 278 NW, Covington, GA 30014",
-  "Douglasville, GA": "7003 N. Concourse Parkway, Douglasville, GA 30134",
-  "Duluth, GA": "1500 Pleasant Hill Rd, Duluth, GA 30096",
-  "Gainesville, GA": "1500 Browns Bridge Rd., Gainesville, GA 30501",
-  "Hiram, GA": "4215 Jimmy Lee Smith Pkwy, Hiram, GA 30141",
-  "Fayetteville, GA": "107 Banks Station, Fayetteville, GA 30214",
-  "Snellville, GA": "1977 Scenic Hwy S, Snellville, GA 30078",
-  "Stockbridge, GA": "3570 GA-138, Stockbridge, GA 30281",
-  "Warner Robins, GA": "2907 Watson Blvd, Warner Robins, GA 31093",
-  "Findlay, OH": "7535 Patriot Dr., Findlay, OH 45840"
-};
-
-const LOCATION_OPTIONS = Object.keys(LOCATION_ADDRESSES);
+import Login from './Login';
 
 function App() {
-  const [location, setLocation] = useState(LOCATION_OPTIONS[0]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Check if user is already authenticated on mount
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const storedUserInfo = localStorage.getItem('user_info');
+    
+    if (token && storedUserInfo) {
+      try {
+        const parsedUserInfo = JSON.parse(storedUserInfo);
+        setUserInfo(parsedUserInfo);
+        setIsAuthenticated(true);
+      } catch (err) {
+        // Invalid stored data, clear it
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_info');
+      }
+    }
+  }, []);
+
+  const handleLoginSuccess = (data) => {
+    setUserInfo({
+      username: data.username,
+      location: data.location,
+      full_name: data.full_name
+    });
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_info');
+    setIsAuthenticated(false);
+    setUserInfo(null);
+    setEvents([]);
+    setError('');
+    setSuccess('');
+  };
 
   const handleSearch = async () => {
     setLoading(true);
@@ -31,11 +54,20 @@ function App() {
     setEvents([]);
 
     try {
-      const params = {
-        location: location
-      };
+      const token = localStorage.getItem('access_token');
       
-      const response = await axios.get('/api/events/family', { params });
+      if (!token) {
+        setError('Not authenticated. Please log in again.');
+        handleLogout();
+        return;
+      }
+
+      const response = await axios.get('/api/events/family', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
       const data = response.data;
 
       if (data.error) {
@@ -46,7 +78,7 @@ function App() {
         const macaroniCount = data.events.filter(e => e.source === 'MacaroniKID').length;
         const schoolsCount = data.events.filter(e => e.source && e.source.includes('Schools')).length;
         const churchesCount = data.events.filter(e => e.category === 'church' || (e.source && e.source.includes('church'))).length;
-        let successMsg = `Found ${data.events.length} family events near ${location}`;
+        let successMsg = `Found ${data.events.length} family events near ${userInfo.location}`;
         
         // Build source counts message
         const sourceCounts = [];
@@ -63,31 +95,43 @@ function App() {
         setError('No family events found.');
       }
     } catch (err) {
-      setError(`Failed to fetch events: ${err.message}`);
+      if (err.response && err.response.status === 401) {
+        setError('Session expired. Please log in again.');
+        handleLogout();
+      } else {
+        setError(`Failed to fetch events: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // If not authenticated, show login screen
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="container">
       <div className="header">
-        <h1>SteviB's AI Outreach</h1>
+        <div className="header-content">
+          <div>
+            <h1>SteviB's AI Outreach</h1>
+            <p className="user-info">
+              Welcome, <strong>{userInfo.full_name}</strong> | Location: <strong>{userInfo.location}</strong>
+            </p>
+          </div>
+          <button className="btn btn-logout" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="controls">
         <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="location">Location</label>
-            <select
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            >
-              {LOCATION_OPTIONS.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+          <div className="location-display">
+            <label>Your Location</label>
+            <div className="location-badge">{userInfo.location}</div>
           </div>
 
           <button
@@ -308,7 +352,7 @@ function App() {
       {!loading && events.length === 0 && success && (
         <div className="no-events">
           <h3>No family events found for the selected criteria.</h3>
-          <p>Try adjusting your location or date range.</p>
+          <p>Try refreshing or contact support if the issue persists.</p>
         </div>
       )}
     </div>

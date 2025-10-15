@@ -1,20 +1,25 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from typing import Dict, Any
 from workflows.family_event_workflow import family_event_workflow
 from models.workflow_state import WorkflowState
 from tools.macaronikid_events import MacaroniKIDEventsTool
+from auth.dependencies import get_current_user
 
 router = APIRouter()
 
 @router.get("/events/family")
 async def get_family_events(
-    location: str = Query(..., description="Location name (e.g. Snellville)"),
+    current_user: dict = Depends(get_current_user),
     use_mock: bool = Query(False, description="Use mock data for testing"),
     search_radius: int = Query(5000, description="Search radius in meters")
 ) -> Dict[str, Any]:
-    """Family-focused endpoint powered by LangGraph workflow."""
+    """Family-focused endpoint powered by LangGraph workflow. Location is determined by authenticated user."""
     
-    print(f"[API] Received family events request for location: {location}")
+    # Use the authenticated user's location
+    location = current_user["location"]
+    
+    print(f"[API] Received family events request from user: {current_user['username']}")
+    print(f"[API] Location: {location}")
     print(f"[API] Parameters - use_mock: {use_mock}, search_radius: {search_radius}")
 
     # Build initial state and run LangGraph workflow synchronously (can wrap in executor for async)
@@ -41,12 +46,16 @@ async def get_family_events(
 
 @router.get("/events/macaronikid")
 async def get_macaronikid_events(
-    location: str = Query(..., description="Location name (e.g. Snellville, GA)"),
+    current_user: dict = Depends(get_current_user),
     debug: bool = Query(False, description="Enable debug output")
 ) -> Dict[str, Any]:
-    """MacaroniKID-only endpoint for independent testing."""
+    """MacaroniKID-only endpoint for independent testing. Location is determined by authenticated user."""
     
-    print(f"[API] Received MacaroniKID events request for location: {location}")
+    # Use the authenticated user's location
+    location = current_user["location"]
+    
+    print(f"[API] Received MacaroniKID events request from user: {current_user['username']}")
+    print(f"[API] Location: {location}")
     print(f"[API] Debug mode: {debug}")
 
     try:

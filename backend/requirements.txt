@@ -19,3 +19,8 @@ langgraph>=0.0.35
 
 networkx
 matplotlib
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
